@@ -1,4 +1,8 @@
 import json
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,10 +12,11 @@ from app.streaming import DebateRequest, run_debate_stream
 
 app = FastAPI(title="Munazara API")
 
+_cors_origin = os.environ.get("CORS_ORIGIN", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[_cors_origin],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

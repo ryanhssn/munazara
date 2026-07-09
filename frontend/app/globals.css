@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --mz-bg: rgb(246, 241, 228);
+  --mz-text: rgb(46, 42, 32);
+  --mz-a: rgb(59, 110, 140);
+  --mz-b: rgb(168, 92, 52);
+  --mz-judge: rgb(224, 81, 47);
+  --mz-agreed: rgb(79, 122, 72);
+  --mz-card: rgb(252, 248, 237);
+  --mz-border: rgba(139, 94, 60, 0.3);
+  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-display: var(--font-newsreader), Georgia, serif;
+  --font-fraunces: var(--font-fraunces), Georgia, serif;
+  --font-mono: var(--font-ibm-plex-mono), monospace;
+  --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
+  --font-arabic: var(--font-noto-naskh), serif;
+}
+
+html, body {
+  height: 100%;
+  background: rgb(246, 241, 228);
+  color: var(--mz-text);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes mzRise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mzStamp {
+  from { opacity: 0; transform: scale(1.4) rotate(-8deg); }
+  to   { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+
+@keyframes mzDrop {
+  from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Scrollbar styling for log cards */
+.mz-scroll::-webkit-scrollbar { width: 3px; }
+.mz-scroll::-webkit-scrollbar-track { background: transparent; }
+.mz-scroll::-webkit-scrollbar-thumb { background: var(--mz-border); border-radius: 2px; }

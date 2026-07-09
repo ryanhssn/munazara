@@ -32,12 +32,21 @@ class UnresolvedDispute(BaseModel):
     reasoning: str
 
 
+class ActionItem(BaseModel):
+    category: Literal["ask_now", "worth_pursuing", "let_go", "revisit"]
+    content: str
+    timing: str
+
+
 class Verdict(BaseModel):
     agreements: list[str] = Field(default_factory=list)
     unresolved_disputes: list[UnresolvedDispute] = Field(default_factory=list)
     recommendation: str
     confidence: float = Field(ge=0.0, le=1.0)
     dissent_notes: str = ""
+    action_items: list[ActionItem] = Field(default_factory=list)
+    winner: Literal["debater_a", "debater_b", "tie"] = "tie"
+    suggested_path: str = ""
 
 
 class DebateState(TypedDict):
@@ -51,6 +60,5 @@ class DebateState(TypedDict):
     verdict: dict | None
     tier: Literal["fast", "balanced", "deep"]
     judge_vendor: str
-    api_keys: dict                            # {"anthropic": "...", "google": "...", "openai": "..."}
     last_a_disputes: list[dict]              # replaced each round, read by convergence_node
     last_b_disputes: list[dict]

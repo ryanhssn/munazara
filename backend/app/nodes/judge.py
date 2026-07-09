@@ -9,7 +9,16 @@ from app.providers import openai as openai_provider
 
 SYSTEM_PROMPT = """You are an impartial judge evaluating a structured debate.
 Analyse both sides carefully. Be fair. Reference specific arguments from the transcript.
-Rule on each unresolved dispute and deliver a clear recommendation."""
+Rule on each unresolved dispute and deliver a clear recommendation.
+
+Also produce 2-4 action_items drawn from the debate's insights. Each has:
+- category: one of "ask_now" (immediate action), "worth_pursuing" (continue/invest), "let_go" (abandon/stop), "revisit" (defer and check back)
+- content: one concrete, specific thing — 10 words max
+- timing: when (e.g. "this week", "90 days", "ongoing", "now")
+
+Set winner to "debater_a", "debater_b", or "tie" based on argument quality.
+
+Set suggested_path to a single short sentence (under 15 words, ALL CAPS) summarising the clearest next step, e.g. "ASK FOR THE REVIEW THIS QUARTER — REASSESS IN 90 DAYS"."""
 
 
 def _build_prompt(state: DebateState) -> str:
