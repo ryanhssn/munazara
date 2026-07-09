@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import AsyncGenerator
 
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -18,7 +19,6 @@ class DebateRequest(BaseModel):
     tier: str = "balanced"
     max_rounds: int = 3
     judge_vendor: str = "anthropic"
-    api_keys: dict[str, str] = {}
 
 
 def _build_initial_state(req: DebateRequest) -> DebateState:
@@ -33,7 +33,6 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "verdict": None,
         "tier": req.tier,
         "judge_vendor": req.judge_vendor,
-        "api_keys": req.api_keys,
         "last_a_disputes": [],
         "last_b_disputes": [],
     }
@@ -41,21 +40,20 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
 
 def _get_model(state: DebateState, role: str):
     tier = state["tier"]
-    keys = state["api_keys"]
     if role == "debater_a":
-        return anthropic_provider.get_model(get_debater_a_model(tier), keys.get("anthropic", ""))
+        return anthropic_provider.get_model(get_debater_a_model(tier), os.environ.get("ANTHROPIC_API_KEY"))
     if role == "debater_b":
-        return google_provider.get_model(get_debater_b_model(tier), keys.get("google", ""))
+        return google_provider.get_model(get_debater_b_model(tier), os.environ.get("GOOGLE_API_KEY"))
     # judge
     vendor = state["judge_vendor"]
     model_id = get_judge_model(tier, vendor)
     match vendor:
         case "openai":
-            return openai_provider.get_model(model_id, keys.get("openai", ""))
+            return openai_provider.get_model(model_id, os.environ.get("OPENAI_API_KEY"))
         case "anthropic":
-            return anthropic_provider.get_model(model_id, keys.get("anthropic", ""))
+            return anthropic_provider.get_model(model_id, os.environ.get("ANTHROPIC_API_KEY"))
         case "google":
-            return google_provider.get_model(model_id, keys.get("google", ""))
+            return google_provider.get_model(model_id, os.environ.get("GOOGLE_API_KEY"))
         case _:
             raise ValueError(f"Unknown judge vendor: {vendor}")
 
@@ -133,13 +131,10 @@ async def _orchestrate(req: DebateRequest, queue: asyncio.Queue) -> None:
             round_num = state["round_count"] + 1
             await queue.put({"event": "round_start", "data": {"round": round_num}})
 
-            # Both debaters run concurrently; each pushes token events to the shared queue
-            turn_a, turn_b = await asyncio.gather(
-                _run_debater(state, "debater_a", queue),
-                _run_debater(state, "debater_b", queue),
-            )
+            turn_a = await _run_debater(state, "debater_a", queue)
+            await asyncio.sleep(1.8)
+            turn_b = await _run_debater(state, "debater_b", queue)
 
-            # Manual state update (mirrors LangGraph reducers)
             state["transcript"].append(turn_a)
             state["transcript"].append(turn_b)
             state["last_a_disputes"] = turn_a["disputes"]
@@ -158,7 +153,9 @@ async def _orchestrate(req: DebateRequest, queue: asyncio.Queue) -> None:
             if converged or state["round_count"] >= state["max_rounds"]:
                 break
 
+        await asyncio.sleep(2.5)
         await queue.put({"event": "judge_start", "data": {}})
+        await asyncio.sleep(1.0)
         verdict = await _run_judge(state, queue)
 
         await queue.put({"event": "verdict", "data": verdict})
