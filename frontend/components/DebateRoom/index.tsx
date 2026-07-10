@@ -108,7 +108,7 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
                 {log.length} {log.length === 1 ? "ENTRY" : "ENTRIES"}
               </span>
             </div>
-            <div style={{ flex: "1 1 0", overflow: "hidden" }}>
+            <div style={{ flex: "1 1 0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DiscussionLog log={log} vertical />
             </div>
           </div>

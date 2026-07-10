@@ -19,7 +19,21 @@ class DebateRequest(BaseModel):
     tier: str = "balanced"
     max_rounds: int = 3
     judge_vendor: str = "anthropic"
+    debater_a_vendor: str = "openai"
+    debater_b_vendor: str = "google"
 
+
+_PROVIDERS = {
+    "anthropic": anthropic_provider,
+    "google": google_provider,
+    "openai": openai_provider,
+}
+
+def _provider(vendor: str):
+    p = _PROVIDERS.get(vendor)
+    if not p:
+        raise ValueError(f"Unknown vendor: {vendor}")
+    return p
 
 def _build_initial_state(req: DebateRequest) -> DebateState:
     return {
@@ -35,31 +49,36 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "judge_vendor": req.judge_vendor,
         "last_a_disputes": [],
         "last_b_disputes": [],
+        "api_keys": {
+            "anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
+            "google": os.environ.get("GOOGLE_API_KEY", ""),
+            "openai": os.environ.get("OPENAI_API_KEY", ""),
+        }
     }
 
 
-def _get_model(state: DebateState, role: str):
+def _get_model(state: DebateState, role: str, req: DebateRequest):
     tier = state["tier"]
+
+    def _key(vendor: str) -> str | None:
+        return state["api_keys"].get(vendor) or None
+
     if role == "debater_a":
-        return anthropic_provider.get_model(get_debater_a_model(tier), os.environ.get("ANTHROPIC_API_KEY"))
+        vendor = req.debater_a_vendor
+        model_id = get_debater_a_model(tier)
+        return _provider(vendor).get_model(model_id, _key(vendor))
     if role == "debater_b":
-        return google_provider.get_model(get_debater_b_model(tier), os.environ.get("GOOGLE_API_KEY"))
+        vendor = req.debater_b_vendor
+        model_id = get_debater_b_model(tier)
+        return _provider(vendor).get_model(model_id, _key(vendor))
     # judge
     vendor = state["judge_vendor"]
     model_id = get_judge_model(tier, vendor)
-    match vendor:
-        case "openai":
-            return openai_provider.get_model(model_id, os.environ.get("OPENAI_API_KEY"))
-        case "anthropic":
-            return anthropic_provider.get_model(model_id, os.environ.get("ANTHROPIC_API_KEY"))
-        case "google":
-            return google_provider.get_model(model_id, os.environ.get("GOOGLE_API_KEY"))
-        case _:
-            raise ValueError(f"Unknown judge vendor: {vendor}")
+    return _provider(vendor).get_model(model_id, _key(vendor))
 
 
-async def _run_debater(state: DebateState, agent: str, queue: asyncio.Queue) -> dict:
-    base_model = _get_model(state, agent)
+async def _run_debater(state: DebateState, agent: str, queue: asyncio.Queue, req: DebateRequest) -> dict:
+    base_model = _get_model(state, agent, req)
     structured = base_model.with_structured_output(DebaterOutput)
     messages = [
         SystemMessage(content=DEBATER_SYSTEM),
@@ -100,8 +119,8 @@ async def _run_debater(state: DebateState, agent: str, queue: asyncio.Queue) -> 
     return turn
 
 
-async def _run_judge(state: DebateState, queue: asyncio.Queue) -> dict:
-    base_model = _get_model(state, "judge")
+async def _run_judge(state: DebateState, queue: asyncio.Queue, req: DebateRequest) -> dict:
+    base_model = _get_model(state, "judge", req)
     structured = base_model.with_structured_output(Verdict)
     messages = [
         SystemMessage(content=JUDGE_SYSTEM),
@@ -131,9 +150,9 @@ async def _orchestrate(req: DebateRequest, queue: asyncio.Queue) -> None:
             round_num = state["round_count"] + 1
             await queue.put({"event": "round_start", "data": {"round": round_num}})
 
-            turn_a = await _run_debater(state, "debater_a", queue)
+            turn_a = await _run_debater(state, "debater_a", queue, req)
             await asyncio.sleep(1.8)
-            turn_b = await _run_debater(state, "debater_b", queue)
+            turn_b = await _run_debater(state, "debater_b", queue, req)
 
             state["transcript"].append(turn_a)
             state["transcript"].append(turn_b)
@@ -156,7 +175,7 @@ async def _orchestrate(req: DebateRequest, queue: asyncio.Queue) -> None:
         await asyncio.sleep(2.5)
         await queue.put({"event": "judge_start", "data": {}})
         await asyncio.sleep(1.0)
-        verdict = await _run_judge(state, queue)
+        verdict = await _run_judge(state, queue, req)
 
         await queue.put({"event": "verdict", "data": verdict})
         await queue.put({"event": "done", "data": {"total_tokens": 0, "estimated_cost_usd": 0.0}})

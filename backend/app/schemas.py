@@ -62,3 +62,4 @@ class DebateState(TypedDict):
     judge_vendor: str
     last_a_disputes: list[dict]              # replaced each round, read by convergence_node
     last_b_disputes: list[dict]
+    api_keys: dict[str, str]
