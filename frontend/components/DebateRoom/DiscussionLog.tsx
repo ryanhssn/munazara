@@ -10,11 +10,13 @@ function toRoman(n: number): string {
   return ["I", "II", "III", "IV", "V"][n - 1] ?? String(n);
 }
 
-function CardShell({ accentColor, children }: { accentColor: string; children: React.ReactNode }) {
+function CardShell({ accentColor, children, vertical }: { accentColor: string; children: React.ReactNode; vertical?: boolean }) {
   return (
     <div
       style={{
-        flex: "0 0 300px",
+        flex: vertical ? "0 0 auto" : "0 0 300px",
+        width: vertical ? "100%" : undefined,
+        boxSizing: "border-box",
         background: "var(--mz-card)",
         borderWidth: "3px 1px 1px",
         borderStyle: "solid",
@@ -53,11 +55,11 @@ function CardTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TurnCard({ entry }: { entry: Extract<LogEntry, { type: "turn" }> }) {
+function TurnCard({ entry, vertical }: { entry: Extract<LogEntry, { type: "turn" }>; vertical?: boolean }) {
   const color = ROLE_COLOR[entry.role];
   const label = entry.role === "debater_a" ? "DEBATER A" : "DEBATER B";
   return (
-    <CardShell accentColor={color}>
+    <CardShell accentColor={color} vertical={vertical}>
       <CardHeader label={`${label} · ROUND ${toRoman(entry.round)} · ${entry.roundName.toUpperCase()}`} labelColor={color} sub={entry.model} />
       <CardTitle>{entry.title}</CardTitle>
       <div
@@ -70,9 +72,9 @@ function TurnCard({ entry }: { entry: Extract<LogEntry, { type: "turn" }> }) {
   );
 }
 
-function AgreementCard({ entry }: { entry: Extract<LogEntry, { type: "agreement" }> }) {
+function AgreementCard({ entry, vertical }: { entry: Extract<LogEntry, { type: "agreement" }>; vertical?: boolean }) {
   return (
-    <CardShell accentColor="rgb(124, 148, 115)">
+    <CardShell accentColor="rgb(124, 148, 115)" vertical={vertical}>
       <CardHeader label="AGREED" labelColor="var(--mz-agreed)" sub={entry.after} />
       <CardTitle>{entry.title}</CardTitle>
       <div
@@ -85,9 +87,9 @@ function AgreementCard({ entry }: { entry: Extract<LogEntry, { type: "agreement"
   );
 }
 
-function DisputeCard({ entry }: { entry: Extract<LogEntry, { type: "dispute" }> }) {
+function DisputeCard({ entry, vertical }: { entry: Extract<LogEntry, { type: "dispute" }>; vertical?: boolean }) {
   return (
-    <CardShell accentColor="rgb(139, 94, 60)">
+    <CardShell accentColor="rgb(139, 94, 60)" vertical={vertical}>
       <CardHeader label="IN DISPUTE" labelColor="var(--mz-text)" sub={entry.after} />
       <CardTitle>{entry.title}</CardTitle>
       <div
@@ -114,24 +116,27 @@ function DisputeCard({ entry }: { entry: Extract<LogEntry, { type: "dispute" }> 
 
 interface Props {
   log: LogEntry[];
+  vertical?: boolean;
 }
 
-export default function DiscussionLog({ log }: Props) {
+export default function DiscussionLog({ log, vertical }: Props) {
   return (
     <div
       style={{
         flex: "1 1 0",
         display: "flex",
+        flexDirection: vertical ? "column" : "row",
         gap: 12,
-        overflowX: "auto",
-        padding: "8px clamp(14px, 2.5vw, 30px) 16px",
-        alignItems: "stretch",
+        overflowX: vertical ? "hidden" : "auto",
+        overflowY: vertical ? "auto" : "hidden",
+        padding: vertical ? "8px 12px 16px" : "8px clamp(14px, 2.5vw, 30px) 16px",
+        alignItems: vertical ? "stretch" : "stretch",
       }}
     >
       {log.map((entry, i) => {
-        if (entry.type === "turn") return <TurnCard key={i} entry={entry} />;
-        if (entry.type === "agreement") return <AgreementCard key={i} entry={entry} />;
-        if (entry.type === "dispute") return <DisputeCard key={i} entry={entry} />;
+        if (entry.type === "turn") return <TurnCard key={i} entry={entry} vertical={vertical} />;
+        if (entry.type === "agreement") return <AgreementCard key={i} entry={entry} vertical={vertical} />;
+        if (entry.type === "dispute") return <DisputeCard key={i} entry={entry} vertical={vertical} />;
       })}
     </div>
   );

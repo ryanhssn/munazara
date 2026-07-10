@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { DebateRoomProps } from "./types";
 import TopNav from "./TopNav";
 import ClassroomScene from "./ClassroomScene";
@@ -10,16 +10,26 @@ import DiscussionLog from "./DiscussionLog";
 const HANDLE_H = 44;
 const DEFAULT_OPEN_H = 280;
 const MIN_H = HANDLE_H;
-const DRAG_THRESHOLD = 4; // px — below this treat mouseup as click
+const DRAG_THRESHOLD = 4;
+// Sidebar appears when viewport can fit classroom (1750) + sidebar (300) + breathing room
+const WIDE_BREAKPOINT = 2080;
 
 export default function DebateRoom({ question, debaterA, debaterB, judge, verdict, log, onReset }: DebateRoomProps) {
   const [verdictDismissed, setVerdictDismissed] = useState(false);
   const [logHeight, setLogHeight] = useState(HANDLE_H);
+  const [isWide, setIsWide] = useState(false);
   const isDragging = useRef(false);
   const dragMoved = useRef(0);
   const dragStartY = useRef(0);
   const dragStartH = useRef(HANDLE_H);
   const animating = useRef(false);
+
+  useEffect(() => {
+    const check = () => setIsWide(window.innerWidth >= WIDE_BREAKPOINT);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const isOpen = logHeight > HANDLE_H;
 
@@ -40,7 +50,6 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
 
     const onUp = () => {
       if (dragMoved.current < DRAG_THRESHOLD) {
-        // treat as click — toggle
         animating.current = true;
         setLogHeight(h => h > HANDLE_H ? HANDLE_H : DEFAULT_OPEN_H);
       }
@@ -67,23 +76,82 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
     >
       <TopNav question={question} onReset={onReset} />
 
-      <div style={{ position: "relative", flex: "1 1 0", display: "flex", flexDirection: "column" }}>
-        <ClassroomScene debaterA={debaterA} debaterB={debaterB} judge={judge} />
+      {/* Middle section: sidebar (wide only) + classroom capped at 1750px */}
+      <div style={{ flex: "1 1 0", display: "flex", flexDirection: "row", overflow: "hidden" }}>
 
-        {verdict && !verdictDismissed && (
-          <VerdictOverlay
-            verdict={verdict}
-            debaterAVendor={debaterA.vendor}
-            debaterBVendor={debaterB.vendor}
-            debaterAModel={debaterA.model}
-            debaterBModel={debaterB.model}
-            onDismiss={() => setVerdictDismissed(true)}
-          />
+        {/* Left sidebar — only when viewport ≥ 2080px */}
+        {isWide && log.length > 0 && (
+          <div
+            style={{
+              width: 300,
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+              background: "linear-gradient(rgb(241,234,216), rgb(234,225,201))",
+              borderRight: "1px solid var(--mz-border)",
+            }}
+          >
+            <div
+              style={{
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "baseline",
+                gap: 10,
+                padding: "12px 16px 10px",
+                borderBottom: "1px solid var(--mz-border)",
+              }}
+            >
+              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, letterSpacing: "0.22em", color: "var(--mz-judge)" }}>
+                DISCUSSION LOG
+              </span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.14em", color: "rgba(46,42,32,0.45)" }}>
+                {log.length} {log.length === 1 ? "ENTRY" : "ENTRIES"}
+              </span>
+            </div>
+            <div style={{ flex: "1 1 0", overflow: "hidden" }}>
+              <DiscussionLog log={log} vertical />
+            </div>
+          </div>
         )}
+
+        {/* Classroom — bg bleeds full width, characters capped at 1750px inside ClassroomScene */}
+        <div style={{ flex: "1 1 0", position: "relative", display: "flex", flexDirection: "column" }}>
+          <ClassroomScene debaterA={debaterA} debaterB={debaterB} judge={judge} />
+
+          {verdict && !verdictDismissed && (
+            <VerdictOverlay
+              verdict={verdict}
+              debaterAVendor={debaterA.vendor}
+              debaterBVendor={debaterB.vendor}
+              debaterAModel={debaterA.model}
+              debaterBModel={debaterB.model}
+              onDismiss={() => setVerdictDismissed(true)}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Discussion log — in-flow panel so scene compresses upward when expanded */}
-      {log.length > 0 && (
+      {/* Wide mode: preserve bottom strip height so scene proportions match narrow mode */}
+      {isWide && log.length > 0 && (
+        <div
+          style={{
+            flexShrink: 0,
+            height: HANDLE_H,
+            background: "linear-gradient(rgb(241,234,216), rgb(234,225,201))",
+            borderTop: "6px solid rgba(139,94,60,0.35)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 clamp(14px, 2.5vw, 30px)",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, letterSpacing: "0.18em", color: "rgba(46,42,32,0.35)" }}>
+            DISCUSSION LOG · LEFT PANEL
+          </span>
+        </div>
+      )}
+
+      {/* Bottom drawer — only on screens narrower than the sidebar breakpoint */}
+      {!isWide && log.length > 0 && (
         <div
           style={{
             flexShrink: 0,
