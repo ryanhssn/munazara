@@ -104,9 +104,9 @@ function reducer(s: StreamState, a: Action): StreamState {
         content: speech,
       };
       if (isA)
-        return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", log: [...s.log, entry] };
+        return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterBExpression: "thinking", log: [...s.log, entry] };
       if (a.agent === "debater_b")
-        return { ...s, debaterBConfidence: a.confidence, debaterBExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", log: [...s.log, entry] };
+        return { ...s, debaterBConfidence: a.confidence, debaterBExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterAExpression: "thinking", log: [...s.log, entry] };
       return s;
     }
 
@@ -134,8 +134,8 @@ function reducer(s: StreamState, a: Action): StreamState {
         phase: "done",
         verdict: a.verdict,
         judgeExpression: "victorious",
-        debaterAExpression: "neutral",
-        debaterBExpression: "neutral",
+        debaterAExpression: a.verdict.winner === "debater_a" ? "victorious" : a.verdict.winner === "tie" ? "victorious" : "disappointed",
+        debaterBExpression: a.verdict.winner === "debater_b" ? "victorious" : a.verdict.winner === "tie" ? "victorious" : "disappointed",
         judgeStatus: "Verdict delivered",
       };
 

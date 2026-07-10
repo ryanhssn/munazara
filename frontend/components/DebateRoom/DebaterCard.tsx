@@ -3,9 +3,10 @@ import VendorIcon, { VENDOR_LABEL, VENDOR_COLOR, VENDOR_ICON_COLOR } from "./Ven
 
 interface Props {
   debater: DebaterConfig;
+  isActive?: boolean;
 }
 
-export default function DebaterCard({ debater }: Props) {
+export default function DebaterCard({ debater, isActive }: Props) {
   const color = VENDOR_COLOR[debater.vendor];
   const iconColor = VENDOR_ICON_COLOR[debater.vendor];
   const pct = Math.round(debater.confidence * 100);
@@ -18,9 +19,12 @@ export default function DebaterCard({ debater }: Props) {
         borderWidth: "3px 1px 1px",
         borderStyle: "solid",
         borderColor: `${color} var(--mz-border) var(--mz-border)`,
-        boxShadow: "rgba(46,42,32,0.35) 0px 14px 30px -16px",
+        boxShadow: isActive
+          ? `0 0 0 2px ${color}, 0 8px 32px ${color}4d, rgba(46,42,32,0.35) 0px 14px 30px -16px`
+          : "rgba(46,42,32,0.35) 0px 14px 30px -16px",
         padding: "9px 11px",
         animation: "mzRise 0.4s ease both",
+        transition: "box-shadow 0.4s ease",
       }}
     >
       {/* Vendor row */}
@@ -112,13 +116,14 @@ export default function DebaterCard({ debater }: Props) {
         <div
           className="mz-scroll"
           style={{
-            maxHeight: 96,
+            maxHeight: isActive ? 160 : 96,
             overflowY: "auto",
             fontFamily: "var(--font-serif)",
             fontSize: 12.5,
             lineHeight: 1.55,
             color: "var(--mz-text)",
             paddingRight: 3,
+            transition: "max-height 0.4s ease",
           }}
         >
           {debater.currentSpeech}

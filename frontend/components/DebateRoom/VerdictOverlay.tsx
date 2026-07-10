@@ -1,14 +1,7 @@
 "use client";
 
-import type { VerdictData, Vendor, ActionCategory } from "./types";
+import type { VerdictData, Vendor } from "./types";
 import VendorIcon, { VENDOR_LABEL, VENDOR_COLOR, VENDOR_ICON_COLOR } from "./VendorIcon";
-
-const ACTION_META: Record<ActionCategory, { label: string; color: string }> = {
-  ask_now:        { label: "ASK FOR THIS NOW",   color: "rgb(46,42,32)" },
-  worth_pursuing: { label: "WORTH PURSUING",     color: "rgb(168,92,52)" },
-  let_go:         { label: "LET GO OF",          color: "rgb(59,110,140)" },
-  revisit:        { label: "REVISIT IN 90 DAYS", color: "rgb(224,81,47)" },
-};
 
 interface Props {
   verdict: VerdictData;
@@ -111,46 +104,6 @@ export default function VerdictOverlay({
             </div>
           </div>
 
-          {/* Action items */}
-          {verdict.action_items && verdict.action_items.length > 0 && (
-            <div
-              style={{
-                paddingTop: 10,
-                borderTop: "1px dotted rgba(46,42,32,0.2)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              {verdict.action_items.map((item, i) => {
-                const meta = ACTION_META[item.category];
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "baseline",
-                      gap: "4px 12px",
-                      borderLeft: `2px solid ${meta.color}`,
-                      padding: "4px 0 4px 10px",
-                    }}
-                  >
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.12em", color: meta.color, minWidth: 155 }}>
-                      {meta.label}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-serif)", fontSize: 12.5, color: "rgba(46,42,32,0.85)", flex: "1 1 180px" }}>
-                      {item.content}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(46,42,32,0.55)", marginLeft: "auto" }}>
-                      {item.timing}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
           {/* Agreements */}
           {verdict.agreements.length > 0 && (
             <div style={{ paddingTop: 10, marginTop: 6, borderTop: "1px dotted rgba(46,42,32,0.2)" }}>
@@ -204,50 +157,79 @@ export default function VerdictOverlay({
             </div>
           )}
 
-          {/* Footer: suggested path + winner + dismiss */}
+          {/* Footer: suggested path + takeaway + back button + stamp */}
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
+              position: "relative",
               marginTop: 14,
-              paddingTop: 10,
-              borderTop: "1px solid rgba(46,42,32,0.18)",
+              padding: "10px 130px 8px 12px",
+              borderTop: "1px solid rgba(46,42,32,0.25)",
+              minHeight: 80,
             }}
           >
-            <div style={{ flex: 1 }}>
-              {verdict.suggested_path && (
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.08em", color: "var(--mz-judge)", marginBottom: 5 }}>
-                  {verdict.suggested_path}
+            {winnerVendor && winnerModel ? (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, letterSpacing: "0.2em", color: "rgba(46,42,32,0.45)", marginBottom: 3 }}>
+                  WINNER
                 </div>
-              )}
-              {winnerVendor && winnerModel && (
-                <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 12.5, color: "rgba(46,42,32,0.7)" }}>
-                  Stronger case:
-                  <VendorIcon vendor={winnerVendor} size={9} color={VENDOR_ICON_COLOR[winnerVendor]} />
-                  <span style={{ color: VENDOR_COLOR[winnerVendor], fontWeight: 600, fontStyle: "normal" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <VendorIcon vendor={winnerVendor} size={11} color={VENDOR_ICON_COLOR[winnerVendor]} />
+                  <span style={{ fontFamily: "var(--font-serif)", fontWeight: 700, fontSize: 15, color: VENDOR_COLOR[winnerVendor] }}>
                     {winnerModel}
                   </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, letterSpacing: "0.14em", color: "rgba(46,42,32,0.4)" }}>
+                    · {VENDOR_LABEL[winnerVendor]}
+                  </span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : verdict.winner === "tie" ? (
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.16em", color: "rgba(46,42,32,0.55)", marginBottom: 6 }}>
+                RESULT · TIE
+              </div>
+            ) : null}
+            {verdict.suggested_path && (
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--mz-judge)" }}>
+                SUGGESTED PATH: {verdict.suggested_path.toUpperCase()}
+              </div>
+            )}
             <button
               onClick={onDismiss}
               style={{
-                flexShrink: 0,
+                marginTop: 10,
                 fontFamily: "var(--font-mono)",
-                fontSize: 8,
+                fontSize: 8.5,
                 letterSpacing: "0.16em",
                 background: "none",
                 border: "1px solid rgba(46,42,32,0.35)",
                 color: "rgba(46,42,32,0.7)",
-                padding: "6px 12px",
+                padding: "6px 11px",
                 cursor: "pointer",
               }}
             >
-              BACK
+              BACK TO THE DISCUSSION
             </button>
+            {/* Stamp */}
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                bottom: -6,
+                mixBlendMode: "multiply",
+                animation: "mzStamp 0.55s cubic-bezier(0.2,1.3,0.3,1) both",
+              }}
+            >
+              <svg width="105" height="105" viewBox="0 0 150 150" aria-label="Discussion complete stamp">
+                <circle cx="75" cy="75" r="70" fill="none" stroke="#E0512F" strokeWidth="2.5" />
+                <circle cx="75" cy="75" r="64" fill="none" stroke="#E0512F" strokeWidth="1" />
+                <circle cx="75" cy="75" r="40" fill="none" stroke="#E0512F" strokeWidth="1" />
+                <defs><path id="mzring2b" d="M 75 23 a 52 52 0 1 1 -0.01 0" /></defs>
+                <text fontFamily="IBM Plex Mono, monospace" fontSize="10" letterSpacing="2" fill="#E0512F">
+                  <textPath href="#mzring2b">MUNAZARA · CLASS DISCUSSION · WRAPPED UP</textPath>
+                </text>
+                <text x="75" y="84" textAnchor="middle" fontFamily="Newsreader, serif" fontSize="36" fontWeight="600" fill="#E0512F">M</text>
+                <text x="75" y="102" textAnchor="middle" fontFamily="Noto Naskh Arabic, serif" fontSize="13" fill="#E0512F">مناظرہ</text>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
