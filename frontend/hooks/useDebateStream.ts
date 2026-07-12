@@ -31,13 +31,16 @@ export interface StreamState {
   log: LogEntry[];
   debaterAModel: string;
   debaterBModel: string;
+  totalTokens: number;
+  estimatedCostUsd: number;
 }
 
 type Action =
   | { type: "RESET"; maxRounds: number; debaterAModel: string; debaterBModel: string }
+  | { type: "DONE_WITH_STATS"; totalTokens: number; estimatedCostUsd: number }
   | { type: "ROUND_START"; round: number }
   | { type: "TOKEN"; agent: string; text: string }
-  | { type: "TURN_COMPLETE"; agent: string; confidence: number; disputes: unknown[] }
+  | { type: "TURN_COMPLETE"; agent: string; confidence: number; disputes: unknown[]; totalTokens: number; estimatedCostUsd: number }
   | { type: "CONVERGENCE"; converged: boolean }
   | { type: "JUDGE_START" }
   | { type: "VERDICT"; verdict: VerdictData }
@@ -61,6 +64,8 @@ const INIT: StreamState = {
   log: [],
   debaterAModel: "",
   debaterBModel: "",
+  totalTokens: 0,
+  estimatedCostUsd: 0,
 };
 
 function reducer(s: StreamState, a: Action): StreamState {
@@ -104,9 +109,9 @@ function reducer(s: StreamState, a: Action): StreamState {
         content: speech,
       };
       if (isA)
-        return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterBExpression: "thinking", log: [...s.log, entry] };
+        return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterBExpression: "thinking", log: [...s.log, entry], totalTokens: a.totalTokens, estimatedCostUsd: a.estimatedCostUsd };
       if (a.agent === "debater_b")
-        return { ...s, debaterBConfidence: a.confidence, debaterBExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterAExpression: "thinking", log: [...s.log, entry] };
+        return { ...s, debaterBConfidence: a.confidence, debaterBExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterAExpression: "thinking", log: [...s.log, entry], totalTokens: a.totalTokens, estimatedCostUsd: a.estimatedCostUsd };
       return s;
     }
 
@@ -141,6 +146,9 @@ function reducer(s: StreamState, a: Action): StreamState {
 
     case "ERROR":
       return { ...s, phase: "error", error: a.message };
+
+    case "DONE_WITH_STATS":
+      return { ...s, phase: s.phase === "error" ? "error" : "done", totalTokens: a.totalTokens, estimatedCostUsd: a.estimatedCostUsd };
 
     case "DONE":
       return { ...s, phase: s.phase === "error" ? "error" : "done" };
@@ -221,9 +229,11 @@ export function useDebateStream() {
             case "turn_complete":
               dispatch({
                 type: "TURN_COMPLETE",
-                agent:     data.agent      as string,
-                confidence: data.confidence as number,
-                disputes:  (data.disputes  as unknown[]) ?? [],
+                agent:      data.agent           as string,
+                confidence: data.confidence      as number,
+                disputes:   (data.disputes       as unknown[]) ?? [],
+                totalTokens:     (data.total_tokens      as number) ?? 0,
+                estimatedCostUsd: (data.estimated_cost_usd as number) ?? 0,
               });
               break;
             case "convergence":
@@ -239,7 +249,7 @@ export function useDebateStream() {
               dispatch({ type: "ERROR", message: (data.message as string) ?? "Unknown error" });
               break;
             case "done":
-              dispatch({ type: "DONE" });
+              dispatch({ type: "DONE_WITH_STATS", totalTokens: (data.total_tokens as number) ?? 0, estimatedCostUsd: (data.estimated_cost_usd as number) ?? 0 });
               break;
           }
         }

@@ -82,6 +82,8 @@ export default function Page() {
         verdict={state.verdict}
         log={state.log}
         onReset={handleReset}
+        totalTokens={state.totalTokens}
+        estimatedCostUsd={state.estimatedCostUsd}
       />
 
       {/* Error banner */}

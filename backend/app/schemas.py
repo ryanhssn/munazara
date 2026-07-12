@@ -54,7 +54,7 @@ class DebateState(TypedDict):
     images: list[str]
     round_count: int
     max_rounds: int
-    transcript: Annotated[list[dict], add]   # nodes return [new_turn]; LangGraph appends
+    transcript: Annotated[list[dict], add]
     agreements: Annotated[list[str], add]
     open_disputes: list[str]
     verdict: dict | None
@@ -62,6 +62,6 @@ class DebateState(TypedDict):
     judge_vendor: str
     debater_a_vendor: str
     debater_b_vendor: str
-    last_a_disputes: list[dict]              # replaced each round, read by convergence_node
+    last_a_disputes: list[dict]
     last_b_disputes: list[dict]
     api_keys: dict[str, str]
