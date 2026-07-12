@@ -107,6 +107,7 @@ export default function JudgeDeskCard({ judge }: Props) {
                   ? "1px solid rgb(255,107,74)"
                   : "1px solid rgba(46,42,32,0.3)",
                 boxShadow: r.active ? "rgba(255,107,74,0.22) 0px 0px 0px 3px" : "none",
+                animation: r.done ? "mzDotPop 0.45s cubic-bezier(0.2,1.4,0.3,1) both" : undefined,
               }}
             >
               {r.done ? "✓" : r.label}

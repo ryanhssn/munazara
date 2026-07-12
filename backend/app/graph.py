@@ -5,7 +5,7 @@ from app.nodes.judge import judge_node
 from app.nodes.convergence import convergence_node, should_continue
 
 
-def build_graph():
+def build_graph(checkpointer=None):
     workflow = StateGraph(DebateState)
 
     workflow.add_node("debater_a", debater_a_node)
@@ -23,7 +23,7 @@ def build_graph():
     )
     workflow.add_edge("judge", END)
 
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
 
 
 graph = build_graph()

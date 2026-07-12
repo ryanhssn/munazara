@@ -59,4 +59,6 @@ export interface DebateRoomProps {
   verdict?: VerdictData | null;
   log: LogEntry[];
   onReset?: () => void;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
 }

@@ -1,9 +1,25 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+
 interface Props {
   question: string;
   onReset?: () => void;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
 }
 
-export default function TopNav({ question, onReset }: Props) {
+export default function TopNav({ question, onReset, totalTokens, estimatedCostUsd }: Props) {
+  const [flashKey, setFlashKey] = useState(0);
+  const prevTokens = useRef(totalTokens);
+
+  useEffect(() => {
+    if (totalTokens != null && totalTokens > 0 && totalTokens !== prevTokens.current) {
+      prevTokens.current = totalTokens;
+      setFlashKey(k => k + 1);
+    }
+  }, [totalTokens]);
+
   return (
     <div
       style={{
@@ -54,7 +70,21 @@ export default function TopNav({ question, onReset }: Props) {
         <span style={{ fontStyle: "normal", opacity: 0.8 }}>{question}</span>
       </div>
 
-      <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+        {totalTokens != null && totalTokens > 0 && (
+          <span
+            key={flashKey}
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 8.5,
+              letterSpacing: "0.12em",
+              color: "rgba(46,42,32,0.5)",
+              animation: flashKey > 0 ? "mzNumFlash 0.7s ease both" : undefined,
+            }}
+          >
+            {totalTokens.toLocaleString()} tok · ${estimatedCostUsd!.toFixed(4)}
+          </span>
+        )}
         {onReset && (
           <button
             onClick={onReset}

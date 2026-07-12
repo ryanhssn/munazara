@@ -174,11 +174,13 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
           style={{
             position: "relative",
             width: "60%",
-            filter:
-              debaterA.expression === "speaking"
-                ? "drop-shadow(0 0 16px rgba(59,110,140,0.6))"
-                : "none",
             transition: "filter 0.5s ease",
+            ...(debaterA.expression === "speaking"
+              ? { animation: "mzGlowA 2s ease-in-out infinite" }
+              : debaterA.expression === "agreeing"
+              ? { filter: "none", animation: "mzVictoryFloat 2.8s ease-in-out infinite" }
+              : { filter: "none" }
+            ),
           }}
         >
           <CharacterSprite
@@ -235,11 +237,13 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
             style={{
               position: "relative",
               width: "65%",
-              filter:
-                judge.expression === "speaking"
-                  ? "drop-shadow(0 0 18px rgba(224,81,47,0.55))"
-                  : "none",
               transition: "filter 0.5s ease",
+              ...(judge.expression === "speaking"
+                ? { animation: "mzGlowJ 2s ease-in-out infinite" }
+                : judge.expression === "victorious"
+                ? { animation: "mzGlowJ 2s ease-in-out infinite, mzVictoryFloat 2.8s ease-in-out 0.2s infinite" }
+                : { filter: "none" }
+              ),
             }}
           >
             <CharacterSprite
@@ -292,11 +296,13 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
           style={{
             position: "relative",
             width: "60%",
-            filter:
-              debaterB.expression === "speaking"
-                ? "drop-shadow(0 0 16px rgba(168,92,52,0.6))"
-                : "none",
             transition: "filter 0.5s ease",
+            ...(debaterB.expression === "speaking"
+              ? { animation: "mzGlowB 2s ease-in-out infinite" }
+              : debaterB.expression === "agreeing"
+              ? { filter: "none", animation: "mzVictoryFloat 2.8s ease-in-out infinite" }
+              : { filter: "none" }
+            ),
           }}
         >
           <CharacterSprite

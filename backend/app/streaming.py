@@ -2,16 +2,11 @@ import asyncio
 import os
 from typing import AsyncGenerator
 
-from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel
 
-from app.models import get_debater_a_model, get_debater_b_model, get_judge_model
-from app.nodes.debater import SYSTEM_PROMPT as DEBATER_SYSTEM, _build_prompt as build_debater_prompt
-from app.nodes.judge import SYSTEM_PROMPT as JUDGE_SYSTEM, _build_prompt as build_judge_prompt
-from app.providers import anthropic as anthropic_provider
-from app.providers import google as google_provider
-from app.providers import openai as openai_provider
-from app.schemas import DebateState, DebaterOutput, Verdict
+from app.graph import graph
+from app.models import estimate_cost, get_model_for_vendor, get_judge_model
+from app.schemas import DebateState
 
 
 class DebateRequest(BaseModel):
@@ -19,6 +14,8 @@ class DebateRequest(BaseModel):
     tier: str = "balanced"
     max_rounds: int = 3
     judge_vendor: str = "anthropic"
+    debater_a_vendor: str = "anthropic"
+    debater_b_vendor: str = "google"
 
 
 def _build_initial_state(req: DebateRequest) -> DebateState:
@@ -33,155 +30,119 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "verdict": None,
         "tier": req.tier,
         "judge_vendor": req.judge_vendor,
+        "debater_a_vendor": req.debater_a_vendor,
+        "debater_b_vendor": req.debater_b_vendor,
         "last_a_disputes": [],
         "last_b_disputes": [],
-    }
-
-
-def _get_model(state: DebateState, role: str):
-    tier = state["tier"]
-    if role == "debater_a":
-        return anthropic_provider.get_model(get_debater_a_model(tier), os.environ.get("ANTHROPIC_API_KEY"))
-    if role == "debater_b":
-        return google_provider.get_model(get_debater_b_model(tier), os.environ.get("GOOGLE_API_KEY"))
-    # judge
-    vendor = state["judge_vendor"]
-    model_id = get_judge_model(tier, vendor)
-    match vendor:
-        case "openai":
-            return openai_provider.get_model(model_id, os.environ.get("OPENAI_API_KEY"))
-        case "anthropic":
-            return anthropic_provider.get_model(model_id, os.environ.get("ANTHROPIC_API_KEY"))
-        case "google":
-            return google_provider.get_model(model_id, os.environ.get("GOOGLE_API_KEY"))
-        case _:
-            raise ValueError(f"Unknown judge vendor: {vendor}")
-
-
-async def _run_debater(state: DebateState, agent: str, queue: asyncio.Queue) -> dict:
-    base_model = _get_model(state, agent)
-    structured = base_model.with_structured_output(DebaterOutput)
-    messages = [
-        SystemMessage(content=DEBATER_SYSTEM),
-        HumanMessage(content=build_debater_prompt(state, agent)),
-    ]
-
-    try:
-        response: DebaterOutput = await structured.ainvoke(messages)
-    except Exception as e:
-        await queue.put({"event": "error", "data": {"agent": agent, "message": str(e)}})
-        raise
-
-    # Emit position text as token stream, yielding between each word for typing effect
-    words = response.position.split()
-    for i, word in enumerate(words):
-        sep = " " if i < len(words) - 1 else ""
-        await queue.put({"event": "token", "data": {"agent": agent, "text": word + sep}})
-        await asyncio.sleep(0.04)
-
-    turn = {
-        "agent": agent,
-        "round": state["round_count"] + 1,
-        "content": response.position,
-        "disputes": [d.model_dump() for d in response.disputes],
-        "concessions": response.concessions,
-        "confidence": response.confidence,
-    }
-
-    await queue.put({
-        "event": "turn_complete",
-        "data": {
-            "agent": agent,
-            "disputes": [d.model_dump() for d in response.disputes],
-            "confidence": response.confidence,
+        "api_keys": {
+            "anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
+            "google":    os.environ.get("GOOGLE_API_KEY", ""),
+            "openai":    os.environ.get("OPENAI_API_KEY", ""),
         },
-    })
-
-    return turn
-
-
-async def _run_judge(state: DebateState, queue: asyncio.Queue) -> dict:
-    base_model = _get_model(state, "judge")
-    structured = base_model.with_structured_output(Verdict)
-    messages = [
-        SystemMessage(content=JUDGE_SYSTEM),
-        HumanMessage(content=build_judge_prompt(state)),
-    ]
-
-    try:
-        verdict: Verdict = await structured.ainvoke(messages)
-    except Exception as e:
-        await queue.put({"event": "error", "data": {"agent": "judge", "message": str(e)}})
-        raise
-
-    words = verdict.recommendation.split()
-    for i, word in enumerate(words):
-        sep = " " if i < len(words) - 1 else ""
-        await queue.put({"event": "token", "data": {"agent": "judge", "text": word + sep}})
-        await asyncio.sleep(0.04)
-
-    return verdict.model_dump()
-
-
-async def _orchestrate(req: DebateRequest, queue: asyncio.Queue) -> None:
-    state = _build_initial_state(req)
-
-    try:
-        while True:
-            round_num = state["round_count"] + 1
-            await queue.put({"event": "round_start", "data": {"round": round_num}})
-
-            turn_a = await _run_debater(state, "debater_a", queue)
-            await asyncio.sleep(1.8)
-            turn_b = await _run_debater(state, "debater_b", queue)
-
-            state["transcript"].append(turn_a)
-            state["transcript"].append(turn_b)
-            state["last_a_disputes"] = turn_a["disputes"]
-            state["last_b_disputes"] = turn_b["disputes"]
-            state["round_count"] += 1
-
-            all_claims = {d["claim"] for d in turn_a["disputes"] + turn_b["disputes"]}
-            state["open_disputes"] = list(all_claims)
-
-            converged = not turn_a["disputes"] and not turn_b["disputes"]
-            await queue.put({
-                "event": "convergence",
-                "data": {"converged": converged, "open_disputes": len(state["open_disputes"])},
-            })
-
-            if converged or state["round_count"] >= state["max_rounds"]:
-                break
-
-        await asyncio.sleep(2.5)
-        await queue.put({"event": "judge_start", "data": {}})
-        await asyncio.sleep(1.0)
-        verdict = await _run_judge(state, queue)
-
-        await queue.put({"event": "verdict", "data": verdict})
-        await queue.put({"event": "done", "data": {"total_tokens": 0, "estimated_cost_usd": 0.0}})
-
-    except Exception as e:
-        await queue.put({"event": "error", "data": {"message": str(e)}})
-
-    finally:
-        await queue.put(None)  # sentinel — signals generator to stop
+    }
 
 
 async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
-    queue: asyncio.Queue[dict | None] = asyncio.Queue()
-    task = asyncio.create_task(_orchestrate(req, queue))
+    state = _build_initial_state(req)
+    current_round = 0
+    tok: dict[str, dict[str, int]] = {
+        "debater_a": {"in": 0, "out": 0},
+        "debater_b": {"in": 0, "out": 0},
+        "judge":     {"in": 0, "out": 0},
+    }
 
-    try:
-        while True:
-            item = await queue.get()
-            if item is None:
-                break
-            yield item
-    finally:
-        if not task.done():
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+    def _running_stats() -> dict:
+        total = sum(v["in"] + v["out"] for v in tok.values())
+        cost = (
+            estimate_cost(get_model_for_vendor(req.tier, req.debater_a_vendor), tok["debater_a"]["in"], tok["debater_a"]["out"])
+            + estimate_cost(get_model_for_vendor(req.tier, req.debater_b_vendor), tok["debater_b"]["in"], tok["debater_b"]["out"])
+            + estimate_cost(get_judge_model(req.tier, req.judge_vendor), tok["judge"]["in"], tok["judge"]["out"])
+        )
+        return {"total_tokens": total, "estimated_cost_usd": round(cost, 6)}
+
+    ls_config = {
+        "run_name": f"debate · {req.tier} · {req.question[:60]}",
+        "metadata": {
+            "tier": req.tier,
+            "question": req.question,
+            "debater_a_vendor": req.debater_a_vendor,
+            "debater_b_vendor": req.debater_b_vendor,
+            "judge_vendor": req.judge_vendor,
+            "max_rounds": req.max_rounds,
+        },
+    }
+
+    async for event in graph.astream_events(state, config=ls_config, version="v2"):
+        kind = event["event"]
+        name = event.get("name", "")
+
+        if kind == "on_chain_start":
+            if name == "debater_a":
+                round_num = event["data"].get("input", {}).get("round_count", 0) + 1
+                if round_num != current_round:
+                    current_round = round_num
+                    yield {"event": "round_start", "data": {"round": current_round}}
+
+            elif name == "judge":
+                yield {"event": "judge_start", "data": {}}
+
+        elif kind == "on_chain_end":
+            output = event["data"].get("output", {})
+
+            if name == "debater_a" and output.get("transcript"):
+                tok["debater_a"]["in"] += output.get("total_input_tokens", 0)
+                tok["debater_a"]["out"] += output.get("total_output_tokens", 0)
+                turn = output["transcript"][-1]
+                words = turn["content"].split()
+                for i, word in enumerate(words):
+                    sep = " " if i < len(words) - 1 else ""
+                    yield {"event": "token", "data": {"agent": "debater_a", "text": word + sep}}
+                    await asyncio.sleep(0.04)
+                yield {
+                    "event": "turn_complete",
+                    "data": {
+                        "agent": "debater_a",
+                        "disputes": turn["disputes"],
+                        "confidence": turn["confidence"],
+                        **_running_stats(),
+                    },
+                }
+
+            elif name == "debater_b" and output.get("transcript"):
+                tok["debater_b"]["in"] += output.get("total_input_tokens", 0)
+                tok["debater_b"]["out"] += output.get("total_output_tokens", 0)
+                turn = output["transcript"][-1]
+                words = turn["content"].split()
+                for i, word in enumerate(words):
+                    sep = " " if i < len(words) - 1 else ""
+                    yield {"event": "token", "data": {"agent": "debater_b", "text": word + sep}}
+                    await asyncio.sleep(0.04)
+                yield {
+                    "event": "turn_complete",
+                    "data": {
+                        "agent": "debater_b",
+                        "disputes": turn["disputes"],
+                        "confidence": turn["confidence"],
+                        **_running_stats(),
+                    },
+                }
+
+            elif name == "convergence":
+                open_disputes = output.get("open_disputes", [])
+                converged = len(open_disputes) == 0
+                yield {
+                    "event": "convergence",
+                    "data": {"converged": converged, "open_disputes": len(open_disputes)},
+                }
+
+            elif name == "judge" and output.get("verdict"):
+                tok["judge"]["in"] += output.get("total_input_tokens", 0)
+                tok["judge"]["out"] += output.get("total_output_tokens", 0)
+                verdict = output["verdict"]
+                words = verdict.get("recommendation", "").split()
+                for i, word in enumerate(words):
+                    sep = " " if i < len(words) - 1 else ""
+                    yield {"event": "token", "data": {"agent": "judge", "text": word + sep}}
+                    await asyncio.sleep(0.04)
+                yield {"event": "verdict", "data": verdict}
+                yield {"event": "done", "data": _running_stats()}

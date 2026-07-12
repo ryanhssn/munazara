@@ -14,7 +14,7 @@ const DRAG_THRESHOLD = 4;
 // Sidebar appears when viewport can fit classroom (1750) + sidebar (300) + breathing room
 const WIDE_BREAKPOINT = 2080;
 
-export default function DebateRoom({ question, debaterA, debaterB, judge, verdict, log, onReset }: DebateRoomProps) {
+export default function DebateRoom({ question, debaterA, debaterB, judge, verdict, log, onReset, totalTokens, estimatedCostUsd }: DebateRoomProps) {
   const [verdictDismissed, setVerdictDismissed] = useState(false);
   const [logHeight, setLogHeight] = useState(HANDLE_H);
   const [isWide, setIsWide] = useState(false);
@@ -74,7 +74,7 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
         overflow: "hidden",
       }}
     >
-      <TopNav question={question} onReset={onReset} />
+      <TopNav question={question} onReset={onReset} totalTokens={totalTokens} estimatedCostUsd={estimatedCostUsd} />
 
       {/* Middle section: sidebar (wide only) + classroom capped at 1750px */}
       <div style={{ flex: "1 1 0", display: "flex", flexDirection: "row", overflow: "hidden" }}>
@@ -108,7 +108,7 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
                 {log.length} {log.length === 1 ? "ENTRY" : "ENTRIES"}
               </span>
             </div>
-            <div style={{ flex: "1 1 0", overflow: "hidden" }}>
+            <div style={{ flex: "1 1 0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DiscussionLog log={log} vertical />
             </div>
           </div>

@@ -22,7 +22,7 @@ function CardShell({ accentColor, children, vertical }: { accentColor: string; c
         borderStyle: "solid",
         borderColor: `${accentColor} var(--mz-border) var(--mz-border)`,
         padding: "11px 13px",
-        animation: "mzRise 0.5s ease both",
+        animation: vertical ? "mzRise 0.5s ease both" : "mzSlideIn 0.35s cubic-bezier(0.2,1,0.3,1) both",
         display: "flex",
         flexDirection: "column",
       }}
