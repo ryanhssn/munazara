@@ -16,38 +16,31 @@ def estimate_cost(model_id: str, input_tokens: int, output_tokens: int) -> float
     return input_tokens * rates[0] + output_tokens * rates[1]
 
 
-MODELS: dict[str, dict[str, str]] = {
-    "fast": {
-        "debater_a": "claude-haiku-4-5-20251001",
-        "debater_b": "gemini-2.5-flash",
-        "judge_openai": "gpt-4o-mini",
-        "judge_anthropic": "claude-haiku-4-5-20251001",
-        "judge_google": "gemini-2.5-flash",
+# Model per vendor per tier — used for both debaters and judges
+VENDOR_MODELS: dict[str, dict[str, str]] = {
+    "anthropic": {
+        "fast":     "claude-haiku-4-5-20251001",
+        "balanced": "claude-sonnet-5",
+        "deep":     "claude-opus-4-8",
     },
-    "balanced": {
-        "debater_a": "claude-sonnet-5",
-        "debater_b": "gemini-2.5-pro",
-        "judge_openai": "gpt-4o",
-        "judge_anthropic": "claude-sonnet-5",
-        "judge_google": "gemini-2.5-pro",
+    "google": {
+        "fast":     "gemini-2.5-flash",
+        "balanced": "gemini-2.5-pro",
+        "deep":     "gemini-3.1-pro-preview",
     },
-    "deep": {
-        "debater_a": "claude-opus-4-8",
-        "debater_b": "gemini-3.1-pro-preview",
-        "judge_openai": "gpt-4o",
-        "judge_anthropic": "claude-opus-4-8",
-        "judge_google": "gemini-3.1-pro-preview",
+    "openai": {
+        "fast":     "gpt-4o-mini",
+        "balanced": "gpt-4o",
+        "deep":     "gpt-4o",
     },
 }
 
 
-def get_debater_a_model(tier: str) -> str:
-    return MODELS[tier]["debater_a"]
+def get_model_for_vendor(tier: str, vendor: str) -> str:
+    return VENDOR_MODELS[vendor][tier]
 
 
-def get_debater_b_model(tier: str) -> str:
-    return MODELS[tier]["debater_b"]
-
+_JUDGE_TIER: dict[str, str] = {"fast": "balanced", "balanced": "deep", "deep": "deep"}
 
 def get_judge_model(tier: str, vendor: str) -> str:
-    return MODELS[tier][f"judge_{vendor}"]
+    return VENDOR_MODELS[vendor][_JUDGE_TIER[tier]]

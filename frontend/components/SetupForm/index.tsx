@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type FormEvent } from "react";
 import type { DebateConfig } from "@/hooks/useDebateStream";
 import type { Vendor } from "@/components/DebateRoom/types";
 import VendorIcon, { VENDOR_ICON_COLOR } from "@/components/DebateRoom/VendorIcon";
-import { JUDGE_DISPLAY } from "@/lib/models";
+import { JUDGE_DISPLAY, DEBATER_DISPLAY } from "@/lib/models";
+import { pickRandom } from "@/lib/questions";
 
 interface Props {
   onStart: (config: DebateConfig) => void;
 }
 
-const EXAMPLE_QUESTIONS = [
-  "Remote work vs. the return to office",
-  "Should a four-day week become standard?",
-  "Is college worth the debt?",
-  "Should social media have a minimum age?",
-];
+
 
 const VENDORS: Vendor[] = ["anthropic", "google", "openai"];
 const VENDOR_NAME: Record<Vendor, string> = { anthropic: "Anthropic", google: "Google", openai: "OpenAI" };
@@ -67,7 +63,7 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open
             </span>
           </span>
           <span style={{ fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 18, lineHeight: 1.1, color: "rgb(46,42,32)" }}>
-            {JUDGE_DISPLAY[vendor][tier]}
+            {DEBATER_DISPLAY[vendor][tier]}
           </span>
           <button
             type="button"
@@ -106,7 +102,7 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open
                       {VENDOR_NAME[v]}
                     </span>
                     <span style={{ display: "block", fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 14, lineHeight: 1.2, color: "rgb(46,42,32)", marginTop: 1 }}>
-                      {JUDGE_DISPLAY[v][tier]}
+                      {DEBATER_DISPLAY[v][tier]}
                     </span>
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.14em", color: selected ? "rgb(224,81,47)" : "rgba(46,42,32,0.4)" }}>
@@ -124,11 +120,12 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open
 
 export default function SetupForm({ onStart }: Props) {
   const [question, setQuestion] = useState("");
+  const examples = useMemo(() => pickRandom(4), []);
   const [tier, setTier] = useState<"fast" | "balanced" | "deep">("balanced");
   const [maxRounds, setMaxRounds] = useState(3);
-  const [debaterAVendor, setDebaterAVendor] = useState<Vendor>("anthropic");
+  const [debaterAVendor, setDebaterAVendor] = useState<Vendor>("openai");
   const [debaterBVendor, setDebaterBVendor] = useState<Vendor>("google");
-  const [judgeVendor, setJudgeVendor] = useState<Vendor>("openai");
+  const [judgeVendor, setJudgeVendor] = useState<Vendor>("anthropic");
 
   const dropA = useDropdown();
   const dropB = useDropdown();
@@ -290,7 +287,7 @@ export default function SetupForm({ onStart }: Props) {
               style={{ width: "100%", boxSizing: "border-box", background: "transparent", border: "none", outline: "none", resize: "vertical", fontFamily: "var(--font-serif)", fontSize: 17.5, lineHeight: 1.6, color: "rgb(46,42,32)", padding: 0 }}
             />
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 16 }}>
-              {EXAMPLE_QUESTIONS.map((q) => (
+              {examples.map((q) => (
                 <button key={q} type="button" onClick={() => setQuestion(q)} style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "rgba(46,42,32,0.65)", background: "rgba(124,148,115,0.1)", border: "1px solid rgba(139,94,60,0.3)", padding: "6px 12px", cursor: "pointer" }}>
                   {q}
                 </button>

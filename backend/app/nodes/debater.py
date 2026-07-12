@@ -1,7 +1,7 @@
 import json
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from app.schemas import DebateState, DebaterOutput
-from app.models import get_debater_a_model, get_debater_b_model
+from app.models import get_model_for_vendor
 from app.providers import anthropic as anthropic_provider
 from app.providers import google as google_provider
 from app.providers import openai as openai_provider
@@ -49,7 +49,7 @@ def _run_debater(state: DebateState, agent: str) -> dict:
     tier = state["tier"]
     vendor = state["debater_a_vendor"] if agent == "debater_a" else state["debater_b_vendor"]
     api_key = state["api_keys"].get(vendor) or None
-    model_id = get_debater_a_model(tier) if agent == "debater_a" else get_debater_b_model(tier)
+    model_id = get_model_for_vendor(tier, vendor)
     base_model = _PROVIDERS[vendor].get_model(model_id, api_key)
     structured = base_model.with_structured_output(DebaterOutput, include_raw=True)
     messages = [

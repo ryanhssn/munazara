@@ -4,6 +4,7 @@ import { useReducer, useCallback, useRef } from "react";
 import type { ExpressionState } from "@/lib/sceneAssets";
 import type { VerdictData, Vendor, LogEntry } from "@/components/DebateRoom/types";
 import { getRoundName, JUDGE_DISPLAY } from "@/lib/models";
+import { API_URL } from "@/lib/config";
 
 export interface DebateConfig {
   question: string;
@@ -157,8 +158,6 @@ function reducer(s: StreamState, a: Action): StreamState {
       return s;
   }
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export function useDebateStream() {
   const [state, dispatch] = useReducer(reducer, INIT);

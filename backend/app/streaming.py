@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 from pydantic import BaseModel
 
 from app.graph import graph
-from app.models import estimate_cost, get_debater_a_model, get_debater_b_model, get_judge_model
+from app.models import estimate_cost, get_model_for_vendor, get_judge_model
 from app.schemas import DebateState
 
 
@@ -54,8 +54,8 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
     def _running_stats() -> dict:
         total = sum(v["in"] + v["out"] for v in tok.values())
         cost = (
-            estimate_cost(get_debater_a_model(req.tier), tok["debater_a"]["in"], tok["debater_a"]["out"])
-            + estimate_cost(get_debater_b_model(req.tier), tok["debater_b"]["in"], tok["debater_b"]["out"])
+            estimate_cost(get_model_for_vendor(req.tier, req.debater_a_vendor), tok["debater_a"]["in"], tok["debater_a"]["out"])
+            + estimate_cost(get_model_for_vendor(req.tier, req.debater_b_vendor), tok["debater_b"]["in"], tok["debater_b"]["out"])
             + estimate_cost(get_judge_model(req.tier, req.judge_vendor), tok["judge"]["in"], tok["judge"]["out"])
         )
         return {"total_tokens": total, "estimated_cost_usd": round(cost, 6)}
