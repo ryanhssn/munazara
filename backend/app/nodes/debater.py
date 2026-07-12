@@ -4,7 +4,13 @@ from app.schemas import DebateState, DebaterOutput
 from app.models import get_debater_a_model, get_debater_b_model
 from app.providers import anthropic as anthropic_provider
 from app.providers import google as google_provider
+from app.providers import openai as openai_provider
 
+_PROVIDERS = {
+    "anthropic": anthropic_provider,
+    "google": google_provider,
+    "openai": openai_provider,
+}
 
 SYSTEM_PROMPT = """You are participating in a structured intellectual debate. Engage rigorously.
 Concede points where your opponent is correct. Dispute claims you disagree with, citing evidence.
@@ -41,15 +47,11 @@ def _build_prompt(state: DebateState, agent: str) -> str:
 
 def _run_debater(state: DebateState, agent: str) -> dict:
     tier = state["tier"]
-    api_keys = state["api_keys"]
-
-    if agent == "debater_a":
-        model_id = get_debater_a_model(tier)
-        base_model = anthropic_provider.get_model(model_id, api_keys["anthropic"])
-    else:
-        model_id = get_debater_b_model(tier)
-        base_model = google_provider.get_model(model_id, api_keys["google"])
-
+    vendor = state["debater_a_vendor"] if agent == "debater_a" else state["debater_b_vendor"]
+    api_key = state["api_keys"].get(vendor) or None
+    model_id = get_debater_a_model(tier) if agent == 'debater_a' else get_debater_b_model(tier)
+    
+    base_model = _PROVIDERS[vendor].get_model(model_id, api_key)
     structured = base_model.with_structured_output(DebaterOutput)
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),

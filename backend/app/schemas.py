@@ -60,6 +60,8 @@ class DebateState(TypedDict):
     verdict: dict | None
     tier: Literal["fast", "balanced", "deep"]
     judge_vendor: str
+    debater_a_vendor: str
+    debater_b_vendor: str
     last_a_disputes: list[dict]              # replaced each round, read by convergence_node
     last_b_disputes: list[dict]
     api_keys: dict[str, str]

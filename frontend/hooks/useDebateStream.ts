@@ -74,8 +74,8 @@ function reducer(s: StreamState, a: Action): StreamState {
         currentRound: a.round,
         debaterASpeech: "",
         debaterBSpeech: "",
-        debaterAExpression: "neutral",
-        debaterBExpression: "neutral",
+        debaterAExpression: "thinking",
+        debaterBExpression: "listening",
         judgeExpression: "listening",
         judgeStatus: `Round ${a.round} underway`,
       };
@@ -174,6 +174,8 @@ export function useDebateStream() {
           tier: config.tier,
           max_rounds: config.maxRounds,
           judge_vendor: config.judgeVendor,
+          debater_a_vendor: config.debaterAVendor,
+          debater_b_vendor: config.debaterBVendor,
         }),
         signal: ctrl.signal,
       });

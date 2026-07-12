@@ -7,10 +7,10 @@ MODELS: dict[str, dict[str, str]] = {
         "judge_google": "gemini-2.5-flash",
     },
     "balanced": {
-        "debater_a": "claude-sonnet-4-6",
+        "debater_a": "claude-sonnet-5",
         "debater_b": "gemini-2.5-pro",
         "judge_openai": "gpt-4o",
-        "judge_anthropic": "claude-sonnet-4-6",
+        "judge_anthropic": "claude-sonnet-5",
         "judge_google": "gemini-2.5-pro",
     },
     "deep": {

@@ -22,9 +22,6 @@ const VENDOR_NAME: Record<Vendor, string> = { anthropic: "Anthropic", google: "G
 const DEBATER_A_IMG = "/assets/debater-a/headshot.png";
 const DEBATER_B_IMG = "/assets/debater-b/headshot.png";
 
-function thirdVendor(a: Vendor, b: Vendor): Vendor {
-  return VENDORS.find(v => v !== a && v !== b)!;
-}
 
 function useDropdown() {
   const [open, setOpen] = useState(false);
@@ -45,7 +42,6 @@ interface DebaterCardProps {
   accentColor: string;
   vendor: Vendor;
   tier: "fast" | "balanced" | "deep";
-  lockedVendor: Vendor;
   image: string;
   open: boolean;
   dropdownRef: React.RefObject<HTMLDivElement | null>;
@@ -53,7 +49,7 @@ interface DebaterCardProps {
   onPick: (v: Vendor) => void;
 }
 
-function DebaterCardWithDropdown({ label, accentColor, vendor, tier, lockedVendor, image, open, dropdownRef, onToggle, onPick }: DebaterCardProps) {
+function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open, dropdownRef, onToggle, onPick }: DebaterCardProps) {
   return (
     <div style={{ position: "relative", flex: "1 1 240px", minWidth: 230, maxWidth: 300 }}>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "0.25em", color: accentColor, textAlign: "center", marginBottom: 9 }}>
@@ -85,13 +81,12 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, lockedVendo
         {open && (
           <div style={dropdownPanelStyle}>
             {VENDORS.map((v) => {
-              const locked = v === lockedVendor;
               const selected = v === vendor;
               return (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => { if (!locked) onPick(v); }}
+                  onClick={() => onPick(v)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -100,10 +95,9 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, lockedVendo
                     padding: "10px 14px",
                     border: "none",
                     borderTop: "1px solid rgba(139,94,60,0.15)",
-                    background: selected ? "rgba(255,107,74,0.12)" : locked ? "rgba(255,107,74,0.05)" : "transparent",
-                    cursor: locked ? "default" : "pointer",
+                    background: selected ? "rgba(255,107,74,0.12)" : "transparent",
+                    cursor: "pointer",
                     textAlign: "left",
-                    opacity: locked ? 0.6 : 1,
                   }}
                 >
                   <VendorIcon vendor={v} size={13} color={VENDOR_ICON_COLOR[v]} />
@@ -115,8 +109,8 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, lockedVendo
                       {JUDGE_DISPLAY[v][tier]}
                     </span>
                   </span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.14em", color: selected ? "rgb(224,81,47)" : locked ? "rgba(224,81,47,0.6)" : "rgba(46,42,32,0.4)" }}>
-                    {selected ? "selected" : locked ? "debating" : ""}
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.14em", color: selected ? "rgb(224,81,47)" : "rgba(46,42,32,0.4)" }}>
+                    {selected ? "selected" : ""}
                   </span>
                 </button>
               );
@@ -132,25 +126,23 @@ export default function SetupForm({ onStart }: Props) {
   const [question, setQuestion] = useState("");
   const [tier, setTier] = useState<"fast" | "balanced" | "deep">("balanced");
   const [maxRounds, setMaxRounds] = useState(3);
-  const [debaterAVendor, setDebaterAVendor] = useState<Vendor>("openai");
+  const [debaterAVendor, setDebaterAVendor] = useState<Vendor>("anthropic");
   const [debaterBVendor, setDebaterBVendor] = useState<Vendor>("google");
-  const judgeVendor = thirdVendor(debaterAVendor, debaterBVendor);
+  const [judgeVendor, setJudgeVendor] = useState<Vendor>("openai");
 
   const dropA = useDropdown();
   const dropB = useDropdown();
   const dropJ = useDropdown();
 
   const pickA = useCallback((v: Vendor) => {
-    if (v === debaterBVendor) setDebaterBVendor(debaterAVendor);
     setDebaterAVendor(v);
     dropA.setOpen(false);
-  }, [debaterAVendor, debaterBVendor, dropA]);
+  }, [dropA]);
 
   const pickB = useCallback((v: Vendor) => {
-    if (v === debaterAVendor) setDebaterAVendor(debaterBVendor);
     setDebaterBVendor(v);
     dropB.setOpen(false);
-  }, [debaterAVendor, debaterBVendor, dropB]);
+  }, [dropB]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -212,7 +204,6 @@ export default function SetupForm({ onStart }: Props) {
               accentColor="rgb(59,110,140)"
               vendor={debaterAVendor}
               tier={tier}
-              lockedVendor={debaterBVendor}
               image={DEBATER_A_IMG}
               open={dropA.open}
               dropdownRef={dropA.ref}
@@ -225,7 +216,6 @@ export default function SetupForm({ onStart }: Props) {
               accentColor="rgb(168,92,52)"
               vendor={debaterBVendor}
               tier={tier}
-              lockedVendor={debaterAVendor}
               image={DEBATER_B_IMG}
               open={dropB.open}
               dropdownRef={dropB.ref}
@@ -263,12 +253,13 @@ export default function SetupForm({ onStart }: Props) {
                 {dropJ.open && (
                   <div style={dropdownPanelStyle}>
                     {VENDORS.map((v) => {
-                      const isDebating = v === debaterAVendor || v === debaterBVendor;
                       const isSelected = v === judgeVendor;
                       return (
-                        <div
+                        <button
                           key={v}
-                          style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderTop: "1px solid rgba(139,94,60,0.15)", background: isSelected ? "rgba(255,107,74,0.12)" : isDebating ? "rgba(255,107,74,0.05)" : "transparent", opacity: isDebating ? 0.6 : 1 }}
+                          type="button"
+                          onClick={() => { setJudgeVendor(v); dropJ.setOpen(false); }}
+                          style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 14px", border: "none", borderTop: "1px solid rgba(139,94,60,0.15)", background: isSelected ? "rgba(255,107,74,0.12)" : "transparent", cursor: "pointer", textAlign: "left" }}
                         >
                           <VendorIcon vendor={v} size={13} color={VENDOR_ICON_COLOR[v]} />
                           <span style={{ flex: 1 }}>
@@ -276,9 +267,9 @@ export default function SetupForm({ onStart }: Props) {
                             <span style={{ display: "block", fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 14, lineHeight: 1.2, color: "rgb(46,42,32)", marginTop: 1 }}>{JUDGE_DISPLAY[v][tier]}</span>
                           </span>
                           <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.14em", color: isSelected ? "rgb(224,81,47)" : "rgba(46,42,32,0.4)" }}>
-                            {isSelected ? "selected" : isDebating ? "debating" : ""}
+                            {isSelected ? "selected" : ""}
                           </span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
