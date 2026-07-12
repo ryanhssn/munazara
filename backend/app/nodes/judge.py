@@ -45,7 +45,7 @@ def _build_prompt(state: DebateState) -> str:
     return "\n".join(lines)
 
 
-def judge_node(state: DebateState) -> dict:
+async def judge_node(state: DebateState) -> dict:
     tier = state["tier"]
     vendor = state["judge_vendor"]
     model_id = get_judge_model(tier, vendor)
@@ -66,7 +66,7 @@ def judge_node(state: DebateState) -> dict:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=_build_prompt(state)),
     ]
-    result = structured.invoke(messages)
+    result = await structured.ainvoke(messages)
     if result["parsed"] is None:
         raw_msg = result["raw"]
         raw_text = raw_msg.content if raw_msg else ""
@@ -77,7 +77,7 @@ def judge_node(state: DebateState) -> dict:
         repair_messages = messages + [raw_msg] + tool_results + [
             HumanMessage(content=f"Your response failed to parse. Return valid JSON matching the required schema. Raw output was:\n{raw_text}"),
         ]
-        result = structured.invoke(repair_messages)
+        result = await structured.ainvoke(repair_messages)
     if result["parsed"] is None:
         raise ValueError(f"Judge structured output parse failed: {result.get('parsing_error')}")
     verdict: Verdict = result["parsed"]

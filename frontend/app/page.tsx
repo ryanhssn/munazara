@@ -23,7 +23,11 @@ export default function Page() {
 
   // Show setup form when idle or no config yet
   if (!config || state.phase === "idle") {
-    return <SetupForm onStart={handleStart} />;
+    return (
+      <div key="setup" style={{ animation: "mzPageIn 0.5s cubic-bezier(0.2,1,0.3,1) both" }}>
+        <SetupForm onStart={handleStart} />
+      </div>
+    );
   }
 
   const roundName = getRoundName(state.currentRound);
@@ -73,7 +77,7 @@ export default function Page() {
   };
 
   return (
-    <>
+    <div key="debate" style={{ animation: "mzPageIn 0.5s cubic-bezier(0.2,1,0.3,1) both" }}>
       <DebateRoom
         question={config.question}
         debaterA={debaterA}
@@ -116,6 +120,6 @@ export default function Page() {
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 }

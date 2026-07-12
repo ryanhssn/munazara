@@ -42,6 +42,70 @@ html, body {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes mzFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mzConfBar {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Speaking glow pulse — one keyframe per role color */
+@keyframes mzGlowA {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(59,110,140,0.25)); }
+  50%       { filter: drop-shadow(0 0 28px rgba(59,110,140,0.88)); }
+}
+@keyframes mzGlowB {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(168,92,52,0.25)); }
+  50%       { filter: drop-shadow(0 0 28px rgba(168,92,52,0.88)); }
+}
+@keyframes mzGlowJ {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(224,81,47,0.25)); }
+  50%       { filter: drop-shadow(0 0 30px rgba(224,81,47,0.88)); }
+}
+
+/* Victory / agreement float */
+@keyframes mzVictoryFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-7px); }
+}
+
+/* Log card slide in from right (horizontal scroll direction) */
+@keyframes mzSlideIn {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Token counter flash */
+@keyframes mzNumFlash {
+  0%   { color: rgba(46,42,32,0.5); }
+  18%  { color: var(--mz-judge); }
+  100% { color: rgba(46,42,32,0.5); }
+}
+
+/* Round dot completion pop */
+@keyframes mzDotPop {
+  0%   { transform: scale(0.55); opacity: 0.3; }
+  65%  { transform: scale(1.35); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+/* Page transition in */
+@keyframes mzPageIn {
+  from { opacity: 0; transform: scale(0.985) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @keyframes mzBlink {
   0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
   40%            { opacity: 1;   transform: scale(1); }

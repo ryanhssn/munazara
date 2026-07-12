@@ -45,7 +45,7 @@ def _build_prompt(state: DebateState, agent: str) -> str:
     return "\n".join(lines)
 
 
-def _run_debater(state: DebateState, agent: str) -> dict:
+async def _run_debater(state: DebateState, agent: str) -> dict:
     tier = state["tier"]
     vendor = state["debater_a_vendor"] if agent == "debater_a" else state["debater_b_vendor"]
     api_key = state["api_keys"].get(vendor) or None
@@ -56,7 +56,7 @@ def _run_debater(state: DebateState, agent: str) -> dict:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=_build_prompt(state, agent)),
     ]
-    result = structured.invoke(messages)
+    result = await structured.ainvoke(messages)
     if result["parsed"] is None:
         # one repair retry
         raw_msg = result["raw"]
@@ -68,7 +68,7 @@ def _run_debater(state: DebateState, agent: str) -> dict:
         repair_messages = messages + [raw_msg] + tool_results + [
             HumanMessage(content=f"Your response failed to parse. Return valid JSON matching the required schema. Raw output was:\n{raw_text}"),
         ]
-        result = structured.invoke(repair_messages)
+        result = await structured.ainvoke(repair_messages)
     if result["parsed"] is None:
         raise ValueError(f"{agent} structured output parse failed: {result.get('parsing_error')}")
     response: DebaterOutput = result["parsed"]
@@ -92,9 +92,9 @@ def _run_debater(state: DebateState, agent: str) -> dict:
     }
 
 
-def debater_a_node(state: DebateState) -> dict:
-    return _run_debater(state, "debater_a")
+async def debater_a_node(state: DebateState) -> dict:
+    return await _run_debater(state, "debater_a")
 
 
-def debater_b_node(state: DebateState) -> dict:
-    return _run_debater(state, "debater_b")
+async def debater_b_node(state: DebateState) -> dict:
+    return await _run_debater(state, "debater_b")

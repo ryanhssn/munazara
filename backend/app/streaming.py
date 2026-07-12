@@ -60,7 +60,19 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
         )
         return {"total_tokens": total, "estimated_cost_usd": round(cost, 6)}
 
-    async for event in graph.astream_events(state, version="v2"):
+    ls_config = {
+        "run_name": f"debate · {req.tier} · {req.question[:60]}",
+        "metadata": {
+            "tier": req.tier,
+            "question": req.question,
+            "debater_a_vendor": req.debater_a_vendor,
+            "debater_b_vendor": req.debater_b_vendor,
+            "judge_vendor": req.judge_vendor,
+            "max_rounds": req.max_rounds,
+        },
+    }
+
+    async for event in graph.astream_events(state, config=ls_config, version="v2"):
         kind = event["event"]
         name = event.get("name", "")
 
