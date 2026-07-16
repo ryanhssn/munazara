@@ -111,7 +111,13 @@ html, body {
   40%            { opacity: 1;   transform: scale(1); }
 }
 
-/* Scrollbar styling for log cards */
-.mz-scroll::-webkit-scrollbar { width: 3px; }
+/* Themed scrollbar — global + explicit .mz-scroll class */
+* { scrollbar-width: thin; scrollbar-color: var(--mz-border) transparent; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--mz-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mz-judge); }
+.mz-scroll::-webkit-scrollbar { width: 4px; }
 .mz-scroll::-webkit-scrollbar-track { background: transparent; }
-.mz-scroll::-webkit-scrollbar-thumb { background: var(--mz-border); border-radius: 2px; }
+.mz-scroll::-webkit-scrollbar-thumb { background: var(--mz-border); border-radius: 3px; }
+.mz-scroll::-webkit-scrollbar-thumb:hover { background: var(--mz-judge); }

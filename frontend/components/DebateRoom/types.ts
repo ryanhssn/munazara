@@ -29,7 +29,15 @@ export interface ActionItem {
   timing: string;
 }
 
+export interface TldrBlock {
+  recommendation: string;
+  why: string;
+  confidence: number;
+  what_would_change_this?: string;
+}
+
 export interface VerdictData {
+  tldr: TldrBlock;
   agreements: string[];
   unresolved_disputes: Array<{
     topic: string;
@@ -38,7 +46,6 @@ export interface VerdictData {
     ruling: string;
     reasoning: string;
   }>;
-  recommendation: string;
   confidence: number;
   dissent_notes: string;
   action_items: ActionItem[];
@@ -46,8 +53,14 @@ export interface VerdictData {
   suggested_path: string;
 }
 
+export interface ExhibitRow {
+  item: string;
+  value: string;
+}
+
 export type LogEntry =
-  | { type: "turn"; role: "debater_a" | "debater_b"; round: number; roundName: string; model: string; title: string; content: string }
+  | { type: "exhibit"; meta: string; title: string; rows: ExhibitRow[]; total_label: string; total_value: string }
+  | { type: "turn"; role: "debater_a" | "debater_b"; round: number; roundName: string; vendor: string; model: string; title: string; content: string }
   | { type: "agreement"; after: string; title: string; content: string }
   | { type: "dispute"; after: string; title: string; positions: Array<{ vendor: string; model: string; text: string }> };
 

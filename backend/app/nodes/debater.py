@@ -26,7 +26,8 @@ def _build_prompt(state: DebateState, agent: str) -> str:
     if state["transcript"]:
         lines.append("=== TRANSCRIPT ===")
         for turn in state["transcript"]:
-            lines.append(f"\n[{turn['agent'].upper()} — Round {turn['round']}]")
+            agent_vendor = state["debater_a_vendor"] if turn["agent"] == "debater_a" else state["debater_b_vendor"]
+            lines.append(f"\n[{agent_vendor.upper()} — Round {turn['round']}]")
             lines.append(f"Position: {turn['content']}")
             if turn.get("concessions"):
                 lines.append(f"Concessions: {', '.join(turn['concessions'])}")
@@ -77,6 +78,7 @@ async def _run_debater(state: DebateState, agent: str) -> dict:
     turn = {
         "agent": agent,
         "round": state["round_count"] + 1,
+        "title": response.title,
         "content": response.position,
         "disputes": [d.model_dump() for d in response.disputes],
         "concessions": response.concessions,

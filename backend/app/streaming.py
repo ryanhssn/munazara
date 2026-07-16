@@ -28,6 +28,7 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "agreements": [],
         "open_disputes": [],
         "verdict": None,
+        "exhibit_card": None,
         "tier": req.tier,
         "judge_vendor": req.judge_vendor,
         "debater_a_vendor": req.debater_a_vendor,
@@ -89,7 +90,10 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
         elif kind == "on_chain_end":
             output = event["data"].get("output", {})
 
-            if name == "debater_a" and output.get("transcript"):
+            if name == "exhibit" and output.get("exhibit_card"):
+                yield {"event": "exhibit", "data": output["exhibit_card"]}
+
+            elif name == "debater_a" and output.get("transcript"):
                 tok["debater_a"]["in"] += output.get("total_input_tokens", 0)
                 tok["debater_a"]["out"] += output.get("total_output_tokens", 0)
                 turn = output["transcript"][-1]
@@ -102,6 +106,7 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                     "event": "turn_complete",
                     "data": {
                         "agent": "debater_a",
+                        "title": turn.get("title", ""),
                         "disputes": turn["disputes"],
                         "confidence": turn["confidence"],
                         **_running_stats(),
@@ -121,6 +126,7 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                     "event": "turn_complete",
                     "data": {
                         "agent": "debater_b",
+                        "title": turn.get("title", ""),
                         "disputes": turn["disputes"],
                         "confidence": turn["confidence"],
                         **_running_stats(),
@@ -139,7 +145,11 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                 tok["judge"]["in"] += output.get("total_input_tokens", 0)
                 tok["judge"]["out"] += output.get("total_output_tokens", 0)
                 verdict = output["verdict"]
-                words = verdict.get("recommendation", "").split()
+                tldr = verdict.get("tldr") or {}
+                stream_text = tldr.get("recommendation", "")
+                if tldr.get("why"):
+                    stream_text = stream_text.rstrip(" .") + ". " + tldr["why"]
+                words = stream_text.split()
                 for i, word in enumerate(words):
                     sep = " " if i < len(words) - 1 else ""
                     yield {"event": "token", "data": {"agent": "judge", "text": word + sep}}

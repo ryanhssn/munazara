@@ -57,7 +57,7 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open
             <img src={image} alt="" style={avatarImgStyle} />
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <VendorIcon vendor={vendor} size={13} color={VENDOR_ICON_COLOR[vendor]} />
+            <VendorIcon vendor={vendor} size={20} color={VENDOR_ICON_COLOR[vendor]} />
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.2em", color: "rgba(46,42,32,0.55)", textTransform: "uppercase" }}>
               {VENDOR_NAME[vendor]}
             </span>
@@ -96,7 +96,7 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open
                     textAlign: "left",
                   }}
                 >
-                  <VendorIcon vendor={v} size={13} color={VENDOR_ICON_COLOR[v]} />
+                  <VendorIcon vendor={v} size={20} color={VENDOR_ICON_COLOR[v]} />
                   <span style={{ flex: 1 }}>
                     <span style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.18em", color: "rgba(46,42,32,0.5)", textTransform: "uppercase" }}>
                       {VENDOR_NAME[v]}
@@ -120,7 +120,8 @@ function DebaterCardWithDropdown({ label, accentColor, vendor, tier, image, open
 
 export default function SetupForm({ onStart }: Props) {
   const [question, setQuestion] = useState("");
-  const examples = useMemo(() => pickRandom(4), []);
+  const [examples, setExamples] = useState<string[]>([]);
+  useEffect(() => { setExamples(pickRandom(4)); }, []);
   const [tier, setTier] = useState<"fast" | "balanced" | "deep">("balanced");
   const [maxRounds, setMaxRounds] = useState(3);
   const [debaterAVendor, setDebaterAVendor] = useState<Vendor>("openai");
@@ -239,7 +240,7 @@ export default function SetupForm({ onStart }: Props) {
                   </span>
                   <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1, flex: 1 }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <VendorIcon vendor={judgeVendor} size={11} color={VENDOR_ICON_COLOR[judgeVendor]} />
+                      <VendorIcon vendor={judgeVendor} size={18} color={VENDOR_ICON_COLOR[judgeVendor]} />
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.2em", color: "rgba(46,42,32,0.55)", textTransform: "uppercase" }}>{VENDOR_NAME[judgeVendor]}</span>
                     </span>
                     <span style={{ fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 17, lineHeight: 1.1, color: "rgb(46,42,32)" }}>{JUDGE_DISPLAY[judgeVendor][tier]}</span>
@@ -258,7 +259,7 @@ export default function SetupForm({ onStart }: Props) {
                           onClick={() => { setJudgeVendor(v); dropJ.setOpen(false); }}
                           style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 14px", border: "none", borderTop: "1px solid rgba(139,94,60,0.15)", background: isSelected ? "rgba(255,107,74,0.12)" : "transparent", cursor: "pointer", textAlign: "left" }}
                         >
-                          <VendorIcon vendor={v} size={13} color={VENDOR_ICON_COLOR[v]} />
+                          <VendorIcon vendor={v} size={20} color={VENDOR_ICON_COLOR[v]} />
                           <span style={{ flex: 1 }}>
                             <span style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.18em", color: "rgba(46,42,32,0.5)", textTransform: "uppercase" }}>{VENDOR_NAME[v]}</span>
                             <span style={{ display: "block", fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: 14, lineHeight: 1.2, color: "rgb(46,42,32)", marginTop: 1 }}>{JUDGE_DISPLAY[v][tier]}</span>

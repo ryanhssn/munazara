@@ -6,12 +6,13 @@ import { ASSET_MAP, EXPRESSIONS } from "@/lib/sceneAssets";
 import type { DebaterConfig, JudgeConfig, Vendor } from "./types";
 import DebaterCard from "./DebaterCard";
 import JudgeDeskCard from "./JudgeDeskCard";
-import { VENDOR_COLOR } from "./VendorIcon";
+import VendorIcon, { VENDOR_COLOR, VENDOR_ICON_COLOR } from "./VendorIcon";
 
 interface Props {
   debaterA: DebaterConfig;
   debaterB: DebaterConfig;
   judge: JudgeConfig;
+  onTakeaway?: () => void;
 }
 
 function CharacterSprite({
@@ -103,7 +104,7 @@ function stageStyle(
   return { ...base, transform: "scale(0.84) translateY(1%)", opacity: 0.52, filter: "brightness(0.82) saturate(0.6)" };
 }
 
-export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
+export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway }: Props) {
   const activeSpeaker: "a" | "b" | "judge" | null =
     debaterA.expression === "speaking" ? "a" :
     debaterB.expression === "speaking" ? "b" :
@@ -200,6 +201,26 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
             priority
             style={{ width: "100%", height: "auto", display: "block" }}
           />
+          <div style={{
+            position: "absolute",
+            top: "18%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(252,248,237,0.92)",
+            border: `1.5px solid ${VENDOR_COLOR[debaterA.vendor]}`,
+            borderRadius: 6,
+            padding: "3px 7px",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+            whiteSpace: "nowrap",
+          }}>
+            <VendorIcon vendor={debaterA.vendor} size={13} color={VENDOR_ICON_COLOR[debaterA.vendor]} />
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.1em", color: VENDOR_COLOR[debaterA.vendor] }}>
+              {debaterA.model}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -224,7 +245,7 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
         >
           {JUDGE_ACTIVE.has(judge.expression) ? (
             <div style={{ width: "100%" }}>
-              <JudgeDeskCard judge={judge} />
+              <JudgeDeskCard judge={judge} onTakeaway={onTakeaway} />
             </div>
           ) : JUDGE_PROCESSING.has(judge.expression) ? (
             <div style={{ width: "100%" }}>
@@ -263,6 +284,26 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
               priority
               style={{ width: "100%", height: "auto", display: "block" }}
             />
+            <div style={{
+              position: "absolute",
+              top: "18%",
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "rgba(252,248,237,0.92)",
+              border: `1.5px solid ${VENDOR_COLOR[judge.vendor]}`,
+              borderRadius: 6,
+              padding: "3px 7px",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+              whiteSpace: "nowrap",
+            }}>
+              <VendorIcon vendor={judge.vendor} size={13} color={VENDOR_ICON_COLOR[judge.vendor]} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.1em", color: VENDOR_COLOR[judge.vendor] }}>
+                {judge.model}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -322,6 +363,26 @@ export default function ClassroomScene({ debaterA, debaterB, judge }: Props) {
             priority
             style={{ width: "100%", height: "auto", display: "block" }}
           />
+          <div style={{
+            position: "absolute",
+            top: "18%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(252,248,237,0.92)",
+            border: `1.5px solid ${VENDOR_COLOR[debaterB.vendor]}`,
+            borderRadius: 6,
+            padding: "3px 7px",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+            whiteSpace: "nowrap",
+          }}>
+            <VendorIcon vendor={debaterB.vendor} size={13} color={VENDOR_ICON_COLOR[debaterB.vendor]} />
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, letterSpacing: "0.1em", color: VENDOR_COLOR[debaterB.vendor] }}>
+              {debaterB.model}
+            </span>
+          </div>
         </div>
       </div>
 

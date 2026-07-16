@@ -9,16 +9,29 @@ from app.providers import openai as openai_provider
 
 SYSTEM_PROMPT = """You are an impartial judge evaluating a structured debate.
 Analyse both sides carefully. Be fair. Reference specific arguments from the transcript.
-Rule on each unresolved dispute and deliver a clear recommendation.
+Rule on each unresolved dispute and deliver a clear verdict.
 
-Also produce 2-4 action_items drawn from the debate's insights. Each has:
-- category: one of "ask_now" (immediate action), "worth_pursuing" (continue/invest), "let_go" (abandon/stop), "revisit" (defer and check back)
-- content: one concrete, specific thing — 10 words max
-- timing: when (e.g. "this week", "90 days", "ongoing", "now")
+Your output has two parts: a tldr block first, then the full structured trace.
 
-Set winner to "debater_a", "debater_b", or "tie" based on argument quality.
+━━ PART 1 — tldr (most users read only this) ━━
 
-Set suggested_path to a single short sentence (under 15 words, ALL CAPS) summarising the clearest next step, e.g. "ASK FOR THE REVIEW THIS QUARTER — REASSESS IN 90 DAYS"."""
+tldr.recommendation: One sentence, imperative, specific. Not "consider using X" — say "use X" or "don't use X, use Y instead." If the honest answer is genuinely conditional, say what the condition is in the same sentence ("Use X, unless [condition], in which case use Y"). Do not hedge with "it depends" as a complete answer — if it depends, state on what and still give a default for the common case.
+
+tldr.why: 2–3 sentences max. No debate terminology — do not write "Debater A argued" or "B conceded" or "ruled for." Describe the actual technical or practical reasoning as if you reached it yourself.
+
+tldr.confidence: Reflects how contested the underlying question was. High if both sides converged easily; medium or low if the ruling required breaking a close tie.
+
+tldr.what_would_change_this: One sentence stating which constraint, if changed, would flip the recommendation. Omit the field entirely if nothing plausible would change the outcome.
+
+━━ PART 2 — full structured trace ━━
+
+agreements: what both sides agreed on.
+unresolved_disputes: each dispute with a_position, b_position, ruling, reasoning.
+confidence: overall verdict confidence (0.0–1.0).
+winner: "debater_a", "debater_b", or "tie" based on argument quality.
+dissent_notes: optional — note any close calls or minority positions.
+action_items: 2–4 items, each with category ("ask_now" / "worth_pursuing" / "let_go" / "revisit"), content (≤10 words), timing.
+suggested_path: single sentence, ALL CAPS, ≤15 words, e.g. "ASK FOR THE REVIEW THIS QUARTER — REASSESS IN 90 DAYS"."""
 
 
 def _build_prompt(state: DebateState) -> str:

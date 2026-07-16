@@ -32,16 +32,19 @@ export interface StreamState {
   log: LogEntry[];
   debaterAModel: string;
   debaterBModel: string;
+  debaterAVendor: Vendor;
+  debaterBVendor: Vendor;
   totalTokens: number;
   estimatedCostUsd: number;
 }
 
 type Action =
-  | { type: "RESET"; maxRounds: number; debaterAModel: string; debaterBModel: string }
+  | { type: "RESET"; maxRounds: number; debaterAModel: string; debaterBModel: string; debaterAVendor: Vendor; debaterBVendor: Vendor }
   | { type: "DONE_WITH_STATS"; totalTokens: number; estimatedCostUsd: number }
+  | { type: "EXHIBIT"; meta: string; title: string; rows: { item: string; value: string }[]; total_label: string; total_value: string }
   | { type: "ROUND_START"; round: number }
   | { type: "TOKEN"; agent: string; text: string }
-  | { type: "TURN_COMPLETE"; agent: string; confidence: number; disputes: unknown[]; totalTokens: number; estimatedCostUsd: number }
+  | { type: "TURN_COMPLETE"; agent: string; title: string; confidence: number; disputes: unknown[]; totalTokens: number; estimatedCostUsd: number }
   | { type: "CONVERGENCE"; converged: boolean }
   | { type: "JUDGE_START" }
   | { type: "VERDICT"; verdict: VerdictData }
@@ -65,6 +68,8 @@ const INIT: StreamState = {
   log: [],
   debaterAModel: "",
   debaterBModel: "",
+  debaterAVendor: "anthropic" as Vendor,
+  debaterBVendor: "google" as Vendor,
   totalTokens: 0,
   estimatedCostUsd: 0,
 };
@@ -72,7 +77,12 @@ const INIT: StreamState = {
 function reducer(s: StreamState, a: Action): StreamState {
   switch (a.type) {
     case "RESET":
-      return { ...INIT, phase: "debating", maxRounds: a.maxRounds, judgeStatus: "Round 1 underway", debaterAModel: a.debaterAModel, debaterBModel: a.debaterBModel };
+      return { ...INIT, phase: "debating", maxRounds: a.maxRounds, judgeStatus: "Round 1 underway", debaterAModel: a.debaterAModel, debaterBModel: a.debaterBModel, debaterAVendor: a.debaterAVendor, debaterBVendor: a.debaterBVendor };
+
+    case "EXHIBIT": {
+      const entry: LogEntry = { type: "exhibit", meta: a.meta, title: a.title, rows: a.rows, total_label: a.total_label, total_value: a.total_value };
+      return { ...s, log: [entry, ...s.log] };
+    }
 
     case "ROUND_START":
       return {
@@ -99,14 +109,15 @@ function reducer(s: StreamState, a: Action): StreamState {
       const isA = a.agent === "debater_a";
       const speech = isA ? s.debaterASpeech : s.debaterBSpeech;
       const model = isA ? s.debaterAModel : s.debaterBModel;
-      const title = speech.split(/[.!?]/)[0]?.trim().slice(0, 72) || speech.slice(0, 72);
+      const vendor = isA ? s.debaterAVendor : s.debaterBVendor;
       const entry: LogEntry = {
         type: "turn",
         role: a.agent as "debater_a" | "debater_b",
         round: s.currentRound,
         roundName: getRoundName(s.currentRound),
+        vendor,
         model,
-        title,
+        title: a.title,
         content: speech,
       };
       if (isA)
@@ -168,7 +179,7 @@ export function useDebateStream() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    dispatch({ type: "RESET", maxRounds: config.maxRounds, debaterAModel: JUDGE_DISPLAY[config.debaterAVendor][config.tier], debaterBModel: JUDGE_DISPLAY[config.debaterBVendor][config.tier] });
+    dispatch({ type: "RESET", maxRounds: config.maxRounds, debaterAModel: JUDGE_DISPLAY[config.debaterAVendor][config.tier], debaterBModel: JUDGE_DISPLAY[config.debaterBVendor][config.tier], debaterAVendor: config.debaterAVendor, debaterBVendor: config.debaterBVendor });
 
     let buffer = "";
 
@@ -219,6 +230,16 @@ export function useDebateStream() {
           try { data = JSON.parse(dataStr); } catch { continue; }
 
           switch (eventType) {
+            case "exhibit":
+              dispatch({
+                type: "EXHIBIT",
+                meta:        data.meta        as string,
+                title:       data.title       as string,
+                rows:        data.rows        as { item: string; value: string }[],
+                total_label: data.total_label as string,
+                total_value: data.total_value as string,
+              });
+              break;
             case "round_start":
               dispatch({ type: "ROUND_START", round: data.round as number });
               break;
@@ -229,6 +250,7 @@ export function useDebateStream() {
               dispatch({
                 type: "TURN_COMPLETE",
                 agent:      data.agent           as string,
+                title:      (data.title          as string) ?? "",
                 confidence: data.confidence      as number,
                 disputes:   (data.disputes       as unknown[]) ?? [],
                 totalTokens:     (data.total_tokens      as number) ?? 0,
@@ -261,7 +283,7 @@ export function useDebateStream() {
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
-    dispatch({ type: "RESET", maxRounds: INIT.maxRounds, debaterAModel: "", debaterBModel: "" });
+    dispatch({ type: "RESET", maxRounds: INIT.maxRounds, debaterAModel: "", debaterBModel: "", debaterAVendor: INIT.debaterAVendor, debaterBVendor: INIT.debaterBVendor });
   }, []);
 
   return { state, start, stop };
