@@ -11,6 +11,7 @@ class DisputeItem(BaseModel):
 
 
 class DebaterOutput(BaseModel):
+    title: str = Field(description="5-8 word headline summarising your position in this turn")
     position: str
     concessions: list[str] = Field(default_factory=list)
     disputes: list[DisputeItem] = Field(default_factory=list)
@@ -38,10 +39,17 @@ class ActionItem(BaseModel):
     timing: str
 
 
+class TldrBlock(BaseModel):
+    recommendation: str
+    why: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    what_would_change_this: str = ""
+
+
 class Verdict(BaseModel):
+    tldr: TldrBlock
     agreements: list[str] = Field(default_factory=list)
     unresolved_disputes: list[UnresolvedDispute] = Field(default_factory=list)
-    recommendation: str
     confidence: float = Field(ge=0.0, le=1.0)
     dissent_notes: str = ""
     action_items: list[ActionItem] = Field(default_factory=list)
@@ -58,6 +66,7 @@ class DebateState(TypedDict):
     agreements: Annotated[list[str], add]
     open_disputes: list[str]
     verdict: dict | None
+    exhibit_card: dict | None
     tier: Literal["fast", "balanced", "deep"]
     judge_vendor: str
     debater_a_vendor: str

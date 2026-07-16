@@ -11,6 +11,7 @@ interface Props {
 
 export default function TopNav({ question, onReset, totalTokens, estimatedCostUsd }: Props) {
   const [flashKey, setFlashKey] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const prevTokens = useRef(totalTokens);
 
   useEffect(() => {
@@ -66,8 +67,36 @@ export default function TopNav({ question, onReset, totalTokens, estimatedCostUs
           color: "rgba(46,42,32,0.7)",
         }}
       >
-        On the table ·{" "}
-        <span style={{ fontStyle: "normal", opacity: 0.8 }}>{question}</span>
+        <span
+          style={{
+            display: expanded ? "inline" : "-webkit-box",
+            WebkitLineClamp: expanded ? undefined : 1,
+            WebkitBoxOrient: expanded ? undefined : "vertical",
+            overflow: expanded ? "visible" : "hidden",
+          }}
+        >
+          On the table ·{" "}
+          <span style={{ fontStyle: "normal", opacity: 0.8 }}>{question}</span>
+        </span>
+        {" "}
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 8.5,
+            letterSpacing: "0.1em",
+            background: "none",
+            border: "none",
+            padding: 0,
+            color: "rgba(46,42,32,0.4)",
+            cursor: "pointer",
+            fontStyle: "normal",
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+          }}
+        >
+          {expanded ? "less" : "more"}
+        </button>
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
