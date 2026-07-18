@@ -6,8 +6,10 @@ COST_PER_TOKEN: dict[str, tuple[float, float]] = {
     "gemini-2.5-flash":          (0.30e-6, 2.50e-6),
     "gemini-2.5-pro":            (1.25e-6, 10e-6),
     "gemini-3.1-pro-preview":    (1.25e-6, 10e-6),
+    "gemini-3.5-flash":          (1.00e-6,  4.00e-6),
     "gpt-4o-mini":               (0.15e-6, 0.60e-6),
     "gpt-4o":                    (2.5e-6,  10e-6),
+    "o3":                        (10e-6,   40e-6),
 }
 
 
@@ -25,13 +27,13 @@ VENDOR_MODELS: dict[str, dict[str, str]] = {
     },
     "google": {
         "fast":     "gemini-2.5-flash",
-        "balanced": "gemini-2.5-pro",
-        "deep":     "gemini-3.1-pro-preview",
+        "balanced": "gemini-3.1-pro-preview",
+        "deep":     "gemini-3.5-flash",
     },
     "openai": {
         "fast":     "gpt-4o-mini",
         "balanced": "gpt-4o",
-        "deep":     "gpt-4o",
+        "deep":     "o3",
     },
 }
 

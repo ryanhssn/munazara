@@ -15,13 +15,13 @@ export default function DebaterCard({ debater, isActive }: Props) {
     <div
       style={{
         width: "100%",
-        background: "var(--mz-card)",
-        borderWidth: "3px 1px 1px",
-        borderStyle: "solid",
-        borderColor: `${color} var(--mz-border) var(--mz-border)`,
+        background: "var(--glass-fill-2)",
+        backdropFilter: "blur(var(--glass-blur-lg)) saturate(160%)",
+        border: "1px solid var(--glass-border)",
+        borderRadius: "var(--radius-xl)",
         boxShadow: isActive
-          ? `0 0 0 2px ${color}, 0 8px 32px ${color}4d, rgba(46,42,32,0.35) 0px 14px 30px -16px`
-          : "rgba(46,42,32,0.35) 0px 14px 30px -16px",
+          ? `0 0 0 2px ${color}, 0 8px 32px ${color}4d, var(--shadow-2)`
+          : "var(--shadow-2), var(--inset-highlight)",
         padding: "9px 11px",
         animation: "mzRise 0.4s ease both",
         transition: "box-shadow 0.4s ease",
@@ -50,7 +50,7 @@ export default function DebaterCard({ debater, isActive }: Props) {
           fontFamily: "var(--font-serif)",
           fontWeight: 600,
           fontSize: 13,
-          color: "var(--mz-text)",
+          color: "var(--ink)",
           marginTop: 2,
         }}
       >
@@ -64,7 +64,7 @@ export default function DebaterCard({ debater, isActive }: Props) {
             fontFamily: "var(--font-mono)",
             fontSize: 6.5,
             letterSpacing: "0.12em",
-            color: "rgba(46,42,32,0.55)",
+            color: "var(--muted)",
           }}
         >
           CONF
@@ -74,7 +74,7 @@ export default function DebaterCard({ debater, isActive }: Props) {
             display: "block",
             flex: "1 1 0",
             height: 3,
-            background: "rgba(46,42,32,0.15)",
+            background: "rgba(0,0,0,0.1)",
           }}
         >
           <span
@@ -99,7 +99,7 @@ export default function DebaterCard({ debater, isActive }: Props) {
         style={{
           marginTop: 7,
           paddingTop: 7,
-          borderTop: "1px dotted rgba(46,42,32,0.2)",
+          borderTop: "1px dotted var(--glass-border)",
         }}
       >
         <div
@@ -121,7 +121,7 @@ export default function DebaterCard({ debater, isActive }: Props) {
             fontFamily: "var(--font-serif)",
             fontSize: 12.5,
             lineHeight: 1.55,
-            color: "var(--mz-text)",
+            color: "var(--ink)",
             paddingRight: 3,
             transition: "max-height 0.4s ease",
           }}

@@ -13,22 +13,14 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
     <div
       style={{
         width: "100%",
-        background: "linear-gradient(rgb(252,248,237), rgb(243,236,218))",
-        border: "1px solid rgba(139,94,60,0.5)",
-        boxShadow: "rgba(46,42,32,0.4) 0px 16px 34px -18px",
-        padding: "0 16px 10px",
+        background: "rgba(255, 246, 228, 0.88)",
+        backdropFilter: "blur(var(--glass-blur-lg)) saturate(160%)",
+        border: "1px solid rgba(207, 90, 53, 0.3)",
+        borderRadius: "var(--radius-xl)",
+        boxShadow: "var(--shadow-3), var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,0.8)",
+        padding: "12px 16px 14px",
       }}
     >
-      {/* Top accent line */}
-      <div
-        style={{
-          height: 4,
-          background: "linear-gradient(rgb(255,138,110), rgb(224,81,47))",
-          margin: "0 -16px 9px",
-          opacity: 0.9,
-        }}
-      />
-
       <div style={{ textAlign: "center" }}>
         {/* Vendor label */}
         <div
@@ -39,11 +31,12 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
             gap: 6,
             fontFamily: "var(--font-mono)",
             fontSize: 8,
+            fontWeight: 700,
             letterSpacing: "0.24em",
-            color: "var(--mz-judge)",
+            color: "var(--accent)",
           }}
         >
-          <VendorIcon vendor={judge.vendor} size={9} color={iconColor} />
+          <VendorIcon vendor={judge.vendor} size={10} color={iconColor} />
           THE DESK · {VENDOR_LABEL[judge.vendor]}
         </div>
 
@@ -51,10 +44,11 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
         <div
           style={{
             fontFamily: "var(--font-serif)",
-            fontWeight: 600,
-            fontSize: 17,
-            color: "var(--mz-text)",
-            marginTop: 2,
+            fontWeight: 700,
+            fontSize: 19,
+            color: "var(--ink)",
+            marginTop: 4,
+            lineHeight: 1.1,
           }}
         >
           {judge.model}
@@ -66,9 +60,10 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
             fontFamily: "var(--font-serif)",
             fontStyle: "italic",
             fontSize: 12.5,
-            color: "rgba(46,42,32,0.75)",
-            marginTop: 3,
-            minHeight: 16,
+            color: "var(--accent)",
+            marginTop: 4,
+            minHeight: 18,
+            fontWeight: 500,
           }}
         >
           {judge.status}
@@ -80,10 +75,10 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
         style={{
           display: "flex",
           justifyContent: "center",
-          gap: 16,
-          marginTop: 9,
-          paddingTop: 8,
-          borderTop: "1px solid rgba(139,94,60,0.3)",
+          gap: 20,
+          marginTop: 12,
+          paddingTop: 10,
+          borderTop: "1px solid rgba(207, 90, 53, 0.2)",
         }}
       >
         {judge.rounds.map((r) => {
@@ -98,8 +93,8 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 3,
-                minWidth: 38,
+                gap: 4,
+                minWidth: 44,
                 cursor: clickable ? "pointer" : "default",
               }}
             >
@@ -108,26 +103,26 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 20,
-                  height: 20,
+                  width: 26,
+                  height: 26,
                   borderRadius: "50%",
                   fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  fontSize: 9,
-                  background: r.active ? "var(--mz-card)" : "transparent",
-                  color: r.active || r.done ? "var(--mz-text)" : "rgba(46,42,32,0.5)",
-                  border: r.active
-                    ? "1px solid rgb(255,107,74)"
-                    : clickable
-                    ? "1px solid rgba(224,81,47,0.6)"
-                    : "1px solid rgba(46,42,32,0.3)",
-                  boxShadow: r.active
-                    ? "rgba(255,107,74,0.22) 0px 0px 0px 3px"
-                    : clickable
-                    ? "rgba(224,81,47,0.18) 0px 0px 0px 3px"
-                    : "none",
+                  fontWeight: 700,
+                  fontSize: 10,
+                  background: r.done
+                    ? "var(--accent)"
+                    : r.active
+                    ? "rgba(207, 90, 53, 0.12)"
+                    : "rgba(255,255,255,0.5)",
+                  color: r.done ? "#faf8f2" : r.active ? "var(--accent)" : "var(--muted)",
+                  border: r.done
+                    ? "1.5px solid var(--accent)"
+                    : r.active
+                    ? "1.5px solid var(--accent)"
+                    : "1.5px solid rgba(207, 90, 53, 0.25)",
+                  boxShadow: r.active ? "var(--shadow-accent)" : r.done ? "0 2px 8px rgba(207,90,53,0.35)" : "none",
                   animation: r.done ? "mzDotPop 0.45s cubic-bezier(0.2,1.4,0.3,1) both" : undefined,
-                  transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                  transition: "all 0.2s ease",
                 }}
               >
                 {r.done ? "✓" : r.label}
@@ -135,10 +130,11 @@ export default function JudgeDeskCard({ judge, onTakeaway }: Props) {
               <span
                 style={{
                   fontFamily: "var(--font-mono)",
-                  fontSize: 6.5,
-                  letterSpacing: "0.1em",
+                  fontSize: 7,
+                  fontWeight: 600,
+                  letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  color: r.active || r.done ? "var(--mz-text)" : "rgba(46,42,32,0.5)",
+                  color: r.active || r.done ? "var(--ink-soft)" : "var(--muted)",
                   textDecoration: clickable ? "underline" : undefined,
                   textUnderlineOffset: 2,
                 }}

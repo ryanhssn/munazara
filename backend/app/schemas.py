@@ -73,4 +73,6 @@ class DebateState(TypedDict):
     debater_b_vendor: str
     last_a_disputes: list[dict]
     last_b_disputes: list[dict]
+    last_a_confidence: float
+    last_b_confidence: float
     api_keys: dict[str, str]

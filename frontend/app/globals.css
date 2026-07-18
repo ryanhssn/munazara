@@ -3,16 +3,93 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
-  --mz-bg: rgb(246, 241, 228);
-  --mz-text: rgb(46, 42, 32);
-  --mz-a: rgb(59, 110, 140);
-  --mz-b: rgb(168, 92, 52);
-  --mz-judge: rgb(224, 81, 47);
-  --mz-agreed: rgb(79, 122, 72);
-  --mz-card: rgb(252, 248, 237);
-  --mz-border: rgba(139, 94, 60, 0.3);
-  --font-serif: var(--font-source-serif), Georgia, serif;
+  /* ── Design tokens ── */
+
+  /* ink & text */
+  --ink: #2c2a26;
+  --ink-soft: #4a453b;
+  --muted: #7a7566;
+  --muted-2: #8a8574;
+  --muted-3: #a19c8c;
+
+  /* accent */
+  --accent: #cf5a35;
+  --accent-dark: #a8442a;
+  --accent-glass: rgba(207, 90, 53, 0.85);
+  --accent-fill: rgba(232, 140, 100, 0.55);
+  --accent-tint: rgba(207, 90, 53, 0.16);
+  --accent-tint-strong: rgba(255, 228, 204, 0.35);
+  --accent-blue: #3a6f8f;
+  --accent-green: #4a7c59;
+  --white: #ffffff;
+
+  /* background */
+  --bg-gradient: linear-gradient(135deg, #ffe4cc 0%, #f4d9ec 30%, #d7e2f8 62%, #c9eee0 100%);
+  --blob-orange: rgba(232, 115, 74, 0.55);
+  --blob-blue: rgba(91, 143, 176, 0.5);
+  --blob-pink: rgba(214, 150, 190, 0.45);
+  --blob-teal: rgba(140, 200, 180, 0.45);
+
+  /* glass surfaces */
+  --glass-fill-1: rgba(255, 255, 255, 0.30);
+  --glass-fill-2: rgba(255, 255, 255, 0.32);
+  --glass-fill-3: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-border-accent: rgba(207, 90, 53, 0.45);
+  --glass-blur-sm: 10px;
+  --glass-blur-md: 18px;
+  --glass-blur-lg: 26px;
+
+  /* shadows */
+  --shadow-1: 0 8px 24px rgba(40, 30, 20, 0.12);
+  --shadow-2: 0 10px 34px rgba(40, 30, 20, 0.14);
+  --shadow-3: 0 16px 48px rgba(40, 30, 20, 0.16);
+  --shadow-accent: 0 8px 24px rgba(207, 90, 53, 0.3);
+  --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  /* radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 22px;
+  --radius-pill: 999px;
+
+  /* spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* type */
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 22px;
+  --text-2xl: 26px;
+  --text-display: 52px;
+  --tracking-label: 0.12em;
+  --tracking-title: 0.22em;
+
+  /* ── App vars (mapped to tokens) ── */
+  --mz-bg: var(--bg-gradient);
+  --mz-text: var(--ink);
+  --mz-a: var(--accent-blue);
+  --mz-b: #a85c34;
+  --mz-judge: var(--accent);
+  --mz-agreed: var(--accent-green);
+  --mz-card: var(--glass-fill-2);
+  --mz-border: var(--glass-border);
+
+  /* fonts */
   --font-display: var(--font-newsreader), Georgia, serif;
+  --font-serif: var(--font-source-serif), Georgia, serif;
   --font-fraunces: var(--font-fraunces), Georgia, serif;
   --font-mono: var(--font-ibm-plex-mono), monospace;
   --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
@@ -21,8 +98,9 @@
 
 html, body {
   height: 100%;
-  background: rgb(246, 241, 228);
-  color: var(--mz-text);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--ink);
   font-family: var(--font-serif);
   -webkit-font-smoothing: antialiased;
 }
@@ -98,6 +176,29 @@ html, body {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Debater speech card flies from classroom to Agent Chats panel */
+@keyframes mzCardFly {
+  0% {
+    transform: translate(var(--fly-x), var(--fly-y)) scale(var(--fly-scale)) rotate(-1.5deg);
+    opacity: 1;
+    filter: drop-shadow(0 22px 44px rgba(0,0,0,0.24));
+  }
+  32% {
+    transform: translate(calc(var(--fly-x) * 0.42), calc(var(--fly-y) * 0.5 - 24px)) scale(calc(var(--fly-scale) * 1.05)) rotate(0.7deg);
+    opacity: 0.94;
+    filter: drop-shadow(0 30px 60px rgba(0,0,0,0.18));
+  }
+  78% {
+    opacity: 0.62;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.1));
+  }
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0;
+    filter: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -106,18 +207,30 @@ html, body {
   }
 }
 
+/* Setup form stagger entrance */
+@keyframes mzCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.mz-stagger-1 { animation: mzCardIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.05s both; }
+.mz-stagger-2 { animation: mzCardIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.12s both; }
+.mz-stagger-3 { animation: mzCardIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.20s both; }
+.mz-stagger-4 { animation: mzCardIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.30s both; }
+.mz-stagger-5 { animation: mzCardIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.40s both; }
+.mz-stagger-6 { animation: mzCardIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.50s both; }
+
 @keyframes mzBlink {
   0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
   40%            { opacity: 1;   transform: scale(1); }
 }
 
 /* Themed scrollbar — global + explicit .mz-scroll class */
-* { scrollbar-width: thin; scrollbar-color: var(--mz-border) transparent; }
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--mz-border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--mz-judge); }
-.mz-scroll::-webkit-scrollbar { width: 4px; }
-.mz-scroll::-webkit-scrollbar-track { background: transparent; }
-.mz-scroll::-webkit-scrollbar-thumb { background: var(--mz-border); border-radius: 3px; }
-.mz-scroll::-webkit-scrollbar-thumb:hover { background: var(--mz-judge); }
+* { scrollbar-width: thin; scrollbar-color: var(--muted-3) transparent; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.06); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--muted-3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.mz-scroll::-webkit-scrollbar { width: 5px; }
+.mz-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.06); border-radius: 99px; }
+.mz-scroll::-webkit-scrollbar-thumb { background: var(--muted-3); border-radius: 99px; }
+.mz-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
