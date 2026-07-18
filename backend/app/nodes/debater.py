@@ -167,10 +167,16 @@ async def _run_debater(state: DebateState, agent: str) -> dict:
     structured = base_model.with_structured_output(DebaterOutput, include_raw=True)
 
     evidence_text = ""
+    evidence_payload: list[dict] = []
+    evidence_query = ""
     if state.get("enable_rag"):
-        query_str = _build_search_query(state, agent)
-        evidence = await fetch_evidence(SearchQuery(query=query_str, max_results=3))
+        evidence_query = _build_search_query(state, agent)
+        evidence = await fetch_evidence(SearchQuery(query=evidence_query, max_results=3))
         evidence_text = _format_evidence(evidence)
+        evidence_payload = [
+            {"title": r.title, "url": r.url, "snippet": r.snippet}
+            for r in evidence.results
+        ]
 
     messages = _build_messages(state, agent, vendor, evidence_text=evidence_text)
 
@@ -211,6 +217,8 @@ async def _run_debater(state: DebateState, agent: str) -> dict:
         "transcript": [turn],
         disputes_key: [d.model_dump() for d in response.disputes],
         confidence_key: response.confidence,
+        "evidence": evidence_payload,
+        "evidence_query": evidence_query,
         "total_input_tokens": usage.get("input_tokens", 0),
         "total_output_tokens": usage.get("output_tokens", 0),
     }
