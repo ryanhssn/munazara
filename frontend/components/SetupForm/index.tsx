@@ -143,6 +143,7 @@ export default function SetupForm({ onStart, historySection }: Props) {
   const [debaterAVendor, setDebaterAVendor] = useState<Vendor>("openai");
   const [debaterBVendor, setDebaterBVendor] = useState<Vendor>("google");
   const [judgeVendor, setJudgeVendor] = useState<Vendor>("anthropic");
+  const [enableRag, setEnableRag] = useState(false);
   const [showWordmarkInfo, setShowWordmarkInfo] = useState(false);
 
   const dropA = useDropdown();
@@ -162,7 +163,7 @@ export default function SetupForm({ onStart, historySection }: Props) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!question.trim()) return;
-    onStart({ question: question.trim(), tier, maxRounds, judgeVendor, debaterAVendor, debaterBVendor });
+    onStart({ question: question.trim(), tier, maxRounds, judgeVendor, debaterAVendor, debaterBVendor, enableRag });
   };
 
   return (
@@ -385,6 +386,41 @@ export default function SetupForm({ onStart, historySection }: Props) {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--glass-border)" }}>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "var(--tracking-label)", color: "var(--muted)" }}>{question.length} CHARACTERS</span>
+
+              {/* RAG toggle */}
+              <button
+                type="button"
+                onClick={() => setEnableRag(r => !r)}
+                title="Let debaters search the web for evidence before each round"
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  background: "transparent", border: "none", cursor: "pointer", padding: 0,
+                }}
+              >
+                {/* pill track */}
+                <span style={{
+                  position: "relative", display: "inline-flex", alignItems: "center",
+                  width: 32, height: 18, borderRadius: 9,
+                  background: enableRag ? "var(--accent)" : "var(--glass-fill-1)",
+                  border: `1px solid ${enableRag ? "var(--accent)" : "var(--glass-border)"}`,
+                  transition: "background 0.2s ease, border-color 0.2s ease",
+                  flexShrink: 0,
+                }}>
+                  {/* thumb */}
+                  <span style={{
+                    position: "absolute",
+                    left: enableRag ? 15 : 2,
+                    width: 12, height: 12, borderRadius: "50%",
+                    background: enableRag ? "var(--white)" : "var(--muted)",
+                    transition: "left 0.2s cubic-bezier(0.22,1,0.36,1), background 0.2s ease",
+                  }} />
+                </span>
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.14em", color: enableRag ? "var(--accent)" : "var(--ink-soft)", transition: "color 0.2s ease" }}>WEB SEARCH</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, letterSpacing: "0.08em", color: "var(--muted)" }}>cite evidence</span>
+                </span>
+              </button>
+
               <button
                 type="submit"
                 disabled={!question.trim()}
