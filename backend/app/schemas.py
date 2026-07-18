@@ -76,3 +76,4 @@ class DebateState(TypedDict):
     last_a_confidence: float
     last_b_confidence: float
     api_keys: dict[str, str]
+    enable_rag: bool

@@ -1,4 +1,6 @@
 import json
+import logging
+import time
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from app.schemas import DebateState, Verdict
 from app.models import get_judge_model
@@ -6,6 +8,8 @@ from app.nodes.debater import _with_retry
 from app.providers import anthropic as anthropic_provider
 from app.providers import google as google_provider
 from app.providers import openai as openai_provider
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """You are an impartial judge evaluating a structured debate.
@@ -76,10 +80,18 @@ async def judge_node(state: DebateState) -> dict:
             raise ValueError(f"Unknown judge vendor: {vendor}")
 
     structured = base_model.with_structured_output(Verdict, include_raw=True)
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=_build_prompt(state)),
-    ]
+    if vendor == "anthropic":
+        # Judge system prompt is long and stable — cache it so repeated judge
+        # calls (e.g. retries) don't re-pay full input-token cost for the prefix.
+        messages = [
+            SystemMessage(content=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]),
+            HumanMessage(content=_build_prompt(state)),
+        ]
+    else:
+        messages = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=_build_prompt(state)),
+        ]
 
     async def _invoke():
         result = await structured.ainvoke(messages)
@@ -96,11 +108,26 @@ async def judge_node(state: DebateState) -> dict:
             result = await structured.ainvoke(repair_messages)
         return result
 
-    result = await _with_retry(_invoke)
+    t0 = time.monotonic()
+    logger.info("judge_call_start", extra={"vendor": vendor, "model": model_id})
+    try:
+        result = await _with_retry(_invoke)
+    except Exception:
+        logger.exception("judge_call_failed", extra={"vendor": vendor, "elapsed_ms": int((time.monotonic() - t0) * 1000)})
+        raise
+
     if result["parsed"] is None:
         raise ValueError(f"Judge structured output parse failed: {result.get('parsing_error')}")
     verdict: Verdict = result["parsed"]
     usage = (result["raw"].usage_metadata or {}) if result.get("raw") else {}
+    logger.info("judge_call_done", extra={
+        "vendor": vendor,
+        "elapsed_ms": int((time.monotonic() - t0) * 1000),
+        "input_tokens": usage.get("input_tokens", 0),
+        "output_tokens": usage.get("output_tokens", 0),
+        "winner": verdict.winner,
+        "confidence": verdict.confidence,
+    })
 
     return {
         "verdict": verdict.model_dump(),

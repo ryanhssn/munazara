@@ -1,10 +1,11 @@
 import pytest
 from pydantic import ValidationError
-from app.schemas import DebaterOutput, Verdict, DisputeItem, UnresolvedDispute
+from app.schemas import DebaterOutput, Verdict, TldrBlock, DisputeItem, UnresolvedDispute
 
 
 def test_debater_output_valid():
     out = DebaterOutput(
+        title="AI regulation debate opening",
         position="AI should be regulated",
         concessions=["Training costs are genuinely high"],
         disputes=[DisputeItem(claim="AI is safe", counter="Several incidents show otherwise", evidence="EU AI Act")],
@@ -15,14 +16,14 @@ def test_debater_output_valid():
 
 
 def test_debater_output_defaults_empty_lists():
-    out = DebaterOutput(position="Some position", confidence=0.5)
+    out = DebaterOutput(title="Some title here", position="Some position", confidence=0.5)
     assert out.concessions == []
     assert out.disputes == []
 
 
 def test_debater_output_rejects_bad_confidence():
     with pytest.raises(ValidationError):
-        DebaterOutput(position="x", confidence=1.5)
+        DebaterOutput(title="x", position="x", confidence=1.5)
 
 
 def test_dispute_item_requires_all_fields():
@@ -32,6 +33,7 @@ def test_dispute_item_requires_all_fields():
 
 def test_verdict_valid():
     v = Verdict(
+        tldr=TldrBlock(recommendation="Narrow", why="Evidence", confidence=0.75),
         agreements=["Both agree regulation is needed"],
         unresolved_disputes=[
             UnresolvedDispute(
@@ -42,7 +44,6 @@ def test_verdict_valid():
                 reasoning="Evidence supports targeted regulation",
             )
         ],
-        recommendation="Narrow AI regulation framework",
         confidence=0.75,
         dissent_notes="Neither addressed training data adequately",
     )
@@ -51,7 +52,10 @@ def test_verdict_valid():
 
 
 def test_verdict_default_empty_fields():
-    v = Verdict(recommendation="Do it", confidence=0.5)
+    v = Verdict(
+        tldr=TldrBlock(recommendation="Do it", why="Because", confidence=0.5),
+        confidence=0.5,
+    )
     assert v.agreements == []
     assert v.unresolved_disputes == []
     assert v.dissent_notes == ""

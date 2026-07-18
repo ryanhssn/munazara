@@ -13,6 +13,7 @@ export interface DebateConfig {
   judgeVendor: Vendor;
   debaterAVendor: Vendor;
   debaterBVendor: Vendor;
+  enableRag: boolean;
 }
 
 export interface StreamState {
@@ -227,6 +228,7 @@ export function useDebateStream() {
           judge_vendor: config.judgeVendor,
           debater_a_vendor: config.debaterAVendor,
           debater_b_vendor: config.debaterBVendor,
+          enable_rag: config.enableRag,
         }),
         signal: ctrl.signal,
       });
@@ -353,6 +355,7 @@ export function useDebateStream() {
           debater_a_vendor: config.debaterAVendor,
           debater_b_vendor: config.debaterBVendor,
           prior_transcript: priorTranscript,
+          enable_rag: config.enableRag,
         }),
         signal: ctrl.signal,
       });

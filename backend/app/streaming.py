@@ -1,23 +1,43 @@
 import asyncio
 import os
 import time
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
-from pydantic import BaseModel
+from typing import Literal
 
-from app.graph import graph
+from pydantic import BaseModel, Field, field_validator
+
+from app.graph import graph as _default_graph, build_graph
 from app.models import estimate_cost, get_model_for_vendor, get_judge_model
 from app.schemas import DebateState
 
+Tier = Literal["fast", "balanced", "deep"]
+Vendor = Literal["anthropic", "google", "openai"]
+
+# Guardrails: the request body is the untrusted edge. These bounds stop a
+# single request from triggering runaway token spend or degenerate prompts.
+MAX_QUESTION_CHARS = 4000
+MAX_ROUNDS_CAP = 10
+MAX_PRIOR_TURNS = 50
+
 
 class DebateRequest(BaseModel):
-    question: str
-    tier: str = "balanced"
-    max_rounds: int = 3
-    judge_vendor: str = "anthropic"
-    debater_a_vendor: str = "anthropic"
-    debater_b_vendor: str = "google"
-    prior_transcript: list[dict] = []
+    question: str = Field(min_length=1, max_length=MAX_QUESTION_CHARS)
+    tier: Tier = "balanced"
+    max_rounds: int = Field(default=3, ge=1, le=MAX_ROUNDS_CAP)
+    judge_vendor: Vendor = "anthropic"
+    debater_a_vendor: Vendor = "anthropic"
+    debater_b_vendor: Vendor = "google"
+    prior_transcript: list[dict] = Field(default_factory=list, max_length=MAX_PRIOR_TURNS)
+    enable_rag: bool = False
+
+    @field_validator("question")
+    @classmethod
+    def _question_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("question must not be blank")
+        return v
 
 
 def _build_initial_state(req: DebateRequest) -> DebateState:
@@ -39,6 +59,7 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "last_b_disputes": [],
         "last_a_confidence": 0.5,
         "last_b_confidence": 0.5,
+        "enable_rag": req.enable_rag,
         "api_keys": {
             "anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
             "google":    os.environ.get("GOOGLE_API_KEY", ""),
@@ -116,7 +137,13 @@ def _llm_delta(chunk) -> str:
     return ""
 
 
-async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
+async def run_debate_stream(
+    req: DebateRequest,
+    graph=None,
+    thread_id: Optional[str] = None,
+) -> AsyncGenerator[dict, None]:
+    if graph is None:
+        graph = _default_graph
     state = _build_initial_state(req)
     current_round = 0
     tok: dict[str, dict[str, int]] = {
@@ -145,7 +172,7 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
         )
         return {"total_tokens": total, "estimated_cost_usd": round(cost, 6)}
 
-    ls_config = {
+    ls_config: dict = {
         "run_name": f"debate · {req.tier} · {req.question[:60]}",
         "metadata": {
             "tier": req.tier,
@@ -156,6 +183,8 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
             "max_rounds": req.max_rounds,
         },
     }
+    if thread_id:
+        ls_config["configurable"] = {"thread_id": thread_id}
 
     async for event in graph.astream_events(state, config=ls_config, version="v2"):
         kind = event["event"]
@@ -282,4 +311,7 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                         yield {"event": "token", "data": {"agent": "judge", "text": word + sep}}
                         await asyncio.sleep(0.06)
                 yield {"event": "verdict", "data": verdict}
-                yield {"event": "done", "data": {**_running_stats(), "transcript": current_transcript}}
+                done_payload = {**_running_stats(), "transcript": current_transcript}
+                if thread_id:
+                    done_payload["thread_id"] = thread_id
+                yield {"event": "done", "data": done_payload}

@@ -32,3 +32,11 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Local scratch notes (never committed)
+*.local.md
+
+# Local debate history database (generated at runtime)
+debate.sqlite
+debate.sqlite-shm
+debate.sqlite-wal
