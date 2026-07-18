@@ -1,5 +1,7 @@
 from app.schemas import DebateState
 
+_CONFIDENCE_THRESHOLD = 0.85
+
 
 def convergence_node(state: DebateState) -> dict:
     # Only place round_count is incremented.
@@ -20,6 +22,18 @@ def convergence_node(state: DebateState) -> dict:
 def should_continue(state: DebateState) -> str:
     if state["round_count"] >= state["max_rounds"]:
         return "judge"
-    if not state["last_a_disputes"] and not state["last_b_disputes"]:
+
+    no_disputes = not state["last_a_disputes"] and not state["last_b_disputes"]
+    if no_disputes:
         return "judge"
+
+    # Early exit: both debaters are highly confident and have been debating
+    # at least one round — no point continuing.
+    if (
+        state["round_count"] >= 1
+        and state.get("last_a_confidence", 0.0) >= _CONFIDENCE_THRESHOLD
+        and state.get("last_b_confidence", 0.0) >= _CONFIDENCE_THRESHOLD
+    ):
+        return "judge"
+
     return "debater_a"

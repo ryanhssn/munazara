@@ -17,6 +17,7 @@ export interface DebateConfig {
 
 export interface StreamState {
   phase: "idle" | "debating" | "judging" | "done" | "error";
+  debateId: string | null;
   currentRound: number;
   maxRounds: number;
   debaterASpeech: string;
@@ -36,15 +37,19 @@ export interface StreamState {
   debaterBVendor: Vendor;
   totalTokens: number;
   estimatedCostUsd: number;
+  tokenOffset: number;
+  costOffset: number;
+  rawTranscript: unknown[];
 }
 
 type Action =
-  | { type: "RESET"; maxRounds: number; debaterAModel: string; debaterBModel: string; debaterAVendor: Vendor; debaterBVendor: Vendor }
-  | { type: "DONE_WITH_STATS"; totalTokens: number; estimatedCostUsd: number }
+  | { type: "RESET"; debateId: string; maxRounds: number; debaterAModel: string; debaterBModel: string; debaterAVendor: Vendor; debaterBVendor: Vendor }
+  | { type: "CONTINUE_DEBATE"; debateId: string; challenge: string; maxRounds: number; debaterAModel: string; debaterBModel: string; debaterAVendor: Vendor; debaterBVendor: Vendor }
+  | { type: "DONE_WITH_STATS"; totalTokens: number; estimatedCostUsd: number; transcript?: unknown[] }
   | { type: "EXHIBIT"; meta: string; title: string; rows: { item: string; value: string }[]; total_label: string; total_value: string }
   | { type: "ROUND_START"; round: number }
   | { type: "TOKEN"; agent: string; text: string }
-  | { type: "TURN_COMPLETE"; agent: string; title: string; confidence: number; disputes: unknown[]; totalTokens: number; estimatedCostUsd: number }
+  | { type: "TURN_COMPLETE"; agent: string; title: string; confidence: number; disputes: unknown[]; totalTokens: number; estimatedCostUsd: number; turnInputTokens: number; turnOutputTokens: number; elapsedMs: number }
   | { type: "CONVERGENCE"; converged: boolean }
   | { type: "JUDGE_START" }
   | { type: "VERDICT"; verdict: VerdictData }
@@ -53,6 +58,7 @@ type Action =
 
 const INIT: StreamState = {
   phase: "idle",
+  debateId: null,
   currentRound: 1,
   maxRounds: 3,
   debaterASpeech: "",
@@ -72,12 +78,36 @@ const INIT: StreamState = {
   debaterBVendor: "google" as Vendor,
   totalTokens: 0,
   estimatedCostUsd: 0,
+  tokenOffset: 0,
+  costOffset: 0,
+  rawTranscript: [],
 };
 
 function reducer(s: StreamState, a: Action): StreamState {
   switch (a.type) {
     case "RESET":
-      return { ...INIT, phase: "debating", maxRounds: a.maxRounds, judgeStatus: "Round 1 underway", debaterAModel: a.debaterAModel, debaterBModel: a.debaterBModel, debaterAVendor: a.debaterAVendor, debaterBVendor: a.debaterBVendor };
+      return { ...INIT, phase: "debating", debateId: a.debateId, maxRounds: a.maxRounds, judgeStatus: "Round 1 underway", debaterAModel: a.debaterAModel, debaterBModel: a.debaterBModel, debaterAVendor: a.debaterAVendor, debaterBVendor: a.debaterBVendor };
+
+    case "CONTINUE_DEBATE": {
+      const challengeEntry: LogEntry = { type: "challenge", text: a.challenge };
+      return {
+        ...INIT,
+        phase: "debating",
+        debateId: a.debateId,
+        maxRounds: a.maxRounds,
+        debaterAModel: a.debaterAModel,
+        debaterBModel: a.debaterBModel,
+        debaterAVendor: a.debaterAVendor,
+        debaterBVendor: a.debaterBVendor,
+        judgeStatus: "Round 1 underway",
+        log: [...s.log, challengeEntry],
+        rawTranscript: s.rawTranscript,
+        tokenOffset: s.totalTokens,
+        costOffset: s.estimatedCostUsd,
+        totalTokens: s.totalTokens,
+        estimatedCostUsd: s.estimatedCostUsd,
+      };
+    }
 
     case "EXHIBIT": {
       const entry: LogEntry = { type: "exhibit", meta: a.meta, title: a.title, rows: a.rows, total_label: a.total_label, total_value: a.total_value };
@@ -119,11 +149,13 @@ function reducer(s: StreamState, a: Action): StreamState {
         model,
         title: a.title,
         content: speech,
+        tokens: a.turnInputTokens || a.turnOutputTokens ? { input: a.turnInputTokens, output: a.turnOutputTokens } : undefined,
+        elapsedMs: a.elapsedMs || undefined,
       };
       if (isA)
-        return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterBExpression: "thinking", log: [...s.log, entry], totalTokens: a.totalTokens, estimatedCostUsd: a.estimatedCostUsd };
+        return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterBExpression: "thinking", log: [...s.log, entry], totalTokens: s.tokenOffset + a.totalTokens, estimatedCostUsd: s.costOffset + a.estimatedCostUsd };
       if (a.agent === "debater_b")
-        return { ...s, debaterBConfidence: a.confidence, debaterBExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterAExpression: "thinking", log: [...s.log, entry], totalTokens: a.totalTokens, estimatedCostUsd: a.estimatedCostUsd };
+        return { ...s, debaterBConfidence: a.confidence, debaterBExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterAExpression: "thinking", log: [...s.log, entry], totalTokens: s.tokenOffset + a.totalTokens, estimatedCostUsd: s.costOffset + a.estimatedCostUsd };
       return s;
     }
 
@@ -160,7 +192,7 @@ function reducer(s: StreamState, a: Action): StreamState {
       return { ...s, phase: "error", error: a.message };
 
     case "DONE_WITH_STATS":
-      return { ...s, phase: s.phase === "error" ? "error" : "done", totalTokens: a.totalTokens, estimatedCostUsd: a.estimatedCostUsd };
+      return { ...s, phase: s.phase === "error" ? "error" : "done", totalTokens: s.tokenOffset + a.totalTokens, estimatedCostUsd: s.costOffset + a.estimatedCostUsd, rawTranscript: a.transcript ?? s.rawTranscript };
 
     case "DONE":
       return { ...s, phase: s.phase === "error" ? "error" : "done" };
@@ -179,7 +211,8 @@ export function useDebateStream() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    dispatch({ type: "RESET", maxRounds: config.maxRounds, debaterAModel: JUDGE_DISPLAY[config.debaterAVendor][config.tier], debaterBModel: JUDGE_DISPLAY[config.debaterBVendor][config.tier], debaterAVendor: config.debaterAVendor, debaterBVendor: config.debaterBVendor });
+    const id = crypto.randomUUID();
+    dispatch({ type: "RESET", debateId: id, maxRounds: config.maxRounds, debaterAModel: JUDGE_DISPLAY[config.debaterAVendor][config.tier], debaterBModel: JUDGE_DISPLAY[config.debaterBVendor][config.tier], debaterAVendor: config.debaterAVendor, debaterBVendor: config.debaterBVendor });
 
     let buffer = "";
 
@@ -249,12 +282,15 @@ export function useDebateStream() {
             case "turn_complete":
               dispatch({
                 type: "TURN_COMPLETE",
-                agent:      data.agent           as string,
-                title:      (data.title          as string) ?? "",
-                confidence: data.confidence      as number,
-                disputes:   (data.disputes       as unknown[]) ?? [],
-                totalTokens:     (data.total_tokens      as number) ?? 0,
-                estimatedCostUsd: (data.estimated_cost_usd as number) ?? 0,
+                agent:            data.agent                as string,
+                title:            (data.title               as string) ?? "",
+                confidence:       data.confidence           as number,
+                disputes:         (data.disputes            as unknown[]) ?? [],
+                totalTokens:      (data.total_tokens        as number) ?? 0,
+                estimatedCostUsd: (data.estimated_cost_usd  as number) ?? 0,
+                turnInputTokens:  (data.turn_input_tokens   as number) ?? 0,
+                turnOutputTokens: (data.turn_output_tokens  as number) ?? 0,
+                elapsedMs:        (data.elapsed_ms          as number) ?? 0,
               });
               break;
             case "convergence":
@@ -270,7 +306,7 @@ export function useDebateStream() {
               dispatch({ type: "ERROR", message: (data.message as string) ?? "Unknown error" });
               break;
             case "done":
-              dispatch({ type: "DONE_WITH_STATS", totalTokens: (data.total_tokens as number) ?? 0, estimatedCostUsd: (data.estimated_cost_usd as number) ?? 0 });
+              dispatch({ type: "DONE_WITH_STATS", totalTokens: (data.total_tokens as number) ?? 0, estimatedCostUsd: (data.estimated_cost_usd as number) ?? 0, transcript: (data.transcript as unknown[]) ?? undefined });
               break;
           }
         }
@@ -283,8 +319,121 @@ export function useDebateStream() {
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
-    dispatch({ type: "RESET", maxRounds: INIT.maxRounds, debaterAModel: "", debaterBModel: "", debaterAVendor: INIT.debaterAVendor, debaterBVendor: INIT.debaterBVendor });
+    dispatch({ type: "RESET", debateId: crypto.randomUUID(), maxRounds: INIT.maxRounds, debaterAModel: "", debaterBModel: "", debaterAVendor: INIT.debaterAVendor, debaterBVendor: INIT.debaterBVendor });
   }, []);
 
-  return { state, start, stop };
+  const continueDebate = useCallback(async (challenge: string, config: DebateConfig, priorTranscript: unknown[]) => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    const id = crypto.randomUUID();
+    dispatch({
+      type: "CONTINUE_DEBATE",
+      debateId: id,
+      challenge,
+      maxRounds: config.maxRounds,
+      debaterAModel: JUDGE_DISPLAY[config.debaterAVendor][config.tier],
+      debaterBModel: JUDGE_DISPLAY[config.debaterBVendor][config.tier],
+      debaterAVendor: config.debaterAVendor,
+      debaterBVendor: config.debaterBVendor,
+    });
+
+    let buffer = "";
+
+    try {
+      const res = await fetch(`${API_URL}/api/debate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: challenge,
+          tier: config.tier,
+          max_rounds: config.maxRounds,
+          judge_vendor: config.judgeVendor,
+          debater_a_vendor: config.debaterAVendor,
+          debater_b_vendor: config.debaterBVendor,
+          prior_transcript: priorTranscript,
+        }),
+        signal: ctrl.signal,
+      });
+
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop() ?? "";
+
+        for (const block of blocks) {
+          if (!block.trim()) continue;
+
+          let eventType = "message";
+          let dataStr = "";
+
+          for (const line of block.split(/\r?\n/)) {
+            if (line.startsWith("event: "))      eventType = line.slice(7).trim();
+            else if (line.startsWith("data: "))  dataStr   = line.slice(6).trim();
+          }
+
+          if (!dataStr) continue;
+
+          let data: Record<string, unknown>;
+          try { data = JSON.parse(dataStr); } catch { continue; }
+
+          switch (eventType) {
+            case "exhibit":
+              dispatch({ type: "EXHIBIT", meta: data.meta as string, title: data.title as string, rows: data.rows as { item: string; value: string }[], total_label: data.total_label as string, total_value: data.total_value as string });
+              break;
+            case "round_start":
+              dispatch({ type: "ROUND_START", round: data.round as number });
+              break;
+            case "token":
+              dispatch({ type: "TOKEN", agent: data.agent as string, text: data.text as string });
+              break;
+            case "turn_complete":
+              dispatch({
+                type: "TURN_COMPLETE",
+                agent:            data.agent                as string,
+                title:            (data.title               as string) ?? "",
+                confidence:       data.confidence           as number,
+                disputes:         (data.disputes            as unknown[]) ?? [],
+                totalTokens:      (data.total_tokens        as number) ?? 0,
+                estimatedCostUsd: (data.estimated_cost_usd  as number) ?? 0,
+                turnInputTokens:  (data.turn_input_tokens   as number) ?? 0,
+                turnOutputTokens: (data.turn_output_tokens  as number) ?? 0,
+                elapsedMs:        (data.elapsed_ms          as number) ?? 0,
+              });
+              break;
+            case "convergence":
+              dispatch({ type: "CONVERGENCE", converged: data.converged as boolean });
+              break;
+            case "judge_start":
+              dispatch({ type: "JUDGE_START" });
+              break;
+            case "verdict":
+              dispatch({ type: "VERDICT", verdict: data as unknown as VerdictData });
+              break;
+            case "error":
+              dispatch({ type: "ERROR", message: (data.message as string) ?? "Unknown error" });
+              break;
+            case "done":
+              dispatch({ type: "DONE_WITH_STATS", totalTokens: (data.total_tokens as number) ?? 0, estimatedCostUsd: (data.estimated_cost_usd as number) ?? 0, transcript: (data.transcript as unknown[]) ?? undefined });
+              break;
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if ((err as Error).name === "AbortError") return;
+      dispatch({ type: "ERROR", message: (err as Error).message });
+    }
+  }, []);
+
+  return { state, start, stop, continueDebate };
 }

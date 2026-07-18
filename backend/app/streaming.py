@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from typing import AsyncGenerator
 
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ class DebateRequest(BaseModel):
     judge_vendor: str = "anthropic"
     debater_a_vendor: str = "anthropic"
     debater_b_vendor: str = "google"
+    prior_transcript: list[dict] = []
 
 
 def _build_initial_state(req: DebateRequest) -> DebateState:
@@ -24,7 +26,7 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "images": [],
         "round_count": 0,
         "max_rounds": req.max_rounds,
-        "transcript": [],
+        "transcript": list(req.prior_transcript),
         "agreements": [],
         "open_disputes": [],
         "verdict": None,
@@ -35,12 +37,83 @@ def _build_initial_state(req: DebateRequest) -> DebateState:
         "debater_b_vendor": req.debater_b_vendor,
         "last_a_disputes": [],
         "last_b_disputes": [],
+        "last_a_confidence": 0.5,
+        "last_b_confidence": 0.5,
         "api_keys": {
             "anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
             "google":    os.environ.get("GOOGLE_API_KEY", ""),
             "openai":    os.environ.get("OPENAI_API_KEY", ""),
         },
     }
+
+
+class _FieldExtractor:
+    """Extract a JSON string field from streaming tool-call argument deltas.
+
+    Handles both OpenAI/Google (tool_call_chunks.args) and Anthropic
+    (content[].input) chunk formats. Extracts the first occurrence of
+    `"<field>": "..."` and decodes JSON escape sequences on the fly.
+    """
+
+    def __init__(self, field: str) -> None:
+        self._trigger = f'"{field}": "'
+        self._buf = ""
+        self._cursor = 0
+        self._in_field = False
+        self._done = False
+
+    def reset(self) -> None:
+        self._buf = ""
+        self._cursor = 0
+        self._in_field = False
+        self._done = False
+
+    def feed(self, delta: str) -> str:
+        if self._done or not delta:
+            return ""
+        self._buf += delta
+        if not self._in_field:
+            idx = self._buf.find(self._trigger)
+            if idx == -1:
+                return ""
+            self._in_field = True
+            self._cursor = idx + len(self._trigger)
+        out: list[str] = []
+        i = self._cursor
+        buf = self._buf
+        while i < len(buf):
+            c = buf[i]
+            if c == "\\" and i + 1 < len(buf):
+                nc = buf[i + 1]
+                out.append({"n": "\n", "t": "\t", '"': '"', "\\": "\\"}.get(nc, nc))
+                i += 2
+            elif c == "\\":
+                break  # incomplete escape — wait for next delta
+            elif c == '"':
+                self._done = True
+                i += 1
+                break
+            else:
+                out.append(c)
+                i += 1
+        self._cursor = i
+        return "".join(out)
+
+
+def _llm_delta(chunk) -> str:
+    """Extract tool-call JSON argument delta from an AIMessageChunk."""
+    # OpenAI / Google: tool_call_chunks with .args
+    for tc in getattr(chunk, "tool_call_chunks", None) or []:
+        args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+        if args:
+            return args
+    # Anthropic: content list with tool_use blocks
+    for block in chunk.content if isinstance(chunk.content, list) else []:
+        if isinstance(block, dict) and block.get("type") == "tool_use":
+            inp = block.get("input", "")
+            if inp:
+                return inp
+    return ""
 
 
 async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
@@ -50,6 +123,17 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
         "debater_a": {"in": 0, "out": 0},
         "debater_b": {"in": 0, "out": 0},
         "judge":     {"in": 0, "out": 0},
+    }
+    node_start_times: dict[str, float] = {}
+    current_transcript: list[dict] = list(req.prior_transcript)
+
+    # Real-streaming state: track which graph node is active so we
+    # can route on_chat_model_stream events to the right extractor.
+    current_node: str | None = None
+    extractors: dict[str, _FieldExtractor] = {
+        "debater_a": _FieldExtractor("position"),
+        "debater_b": _FieldExtractor("position"),
+        "judge":     _FieldExtractor("recommendation"),
     }
 
     def _running_stats() -> dict:
@@ -79,29 +163,59 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
 
         if kind == "on_chain_start":
             if name == "debater_a":
+                current_node = "debater_a"
+                extractors["debater_a"].reset()
+                node_start_times["debater_a"] = time.monotonic()
                 round_num = event["data"].get("input", {}).get("round_count", 0) + 1
                 if round_num != current_round:
                     current_round = round_num
                     yield {"event": "round_start", "data": {"round": current_round}}
 
+            elif name == "debater_b":
+                current_node = "debater_b"
+                extractors["debater_b"].reset()
+                node_start_times["debater_b"] = time.monotonic()
+
             elif name == "judge":
+                current_node = "judge"
+                extractors["judge"].reset()
                 yield {"event": "judge_start", "data": {}}
 
+        elif kind == "on_chat_model_stream":
+            if current_node in extractors:
+                chunk = event["data"].get("chunk")
+                if chunk is not None:
+                    delta = _llm_delta(chunk)
+                    text = extractors[current_node].feed(delta)
+                    if text:
+                        yield {"event": "token", "data": {"agent": current_node, "text": text}}
+
         elif kind == "on_chain_end":
+            if name in extractors:
+                current_node = None
+
             output = event["data"].get("output", {})
 
             if name == "exhibit" and output.get("exhibit_card"):
                 yield {"event": "exhibit", "data": output["exhibit_card"]}
 
             elif name == "debater_a" and output.get("transcript"):
-                tok["debater_a"]["in"] += output.get("total_input_tokens", 0)
-                tok["debater_a"]["out"] += output.get("total_output_tokens", 0)
+                elapsed_ms = int((time.monotonic() - node_start_times.get("debater_a", 0)) * 1000)
+                turn_in = output.get("total_input_tokens", 0)
+                turn_out = output.get("total_output_tokens", 0)
+                tok["debater_a"]["in"] += turn_in
+                tok["debater_a"]["out"] += turn_out
                 turn = output["transcript"][-1]
-                words = turn["content"].split()
-                for i, word in enumerate(words):
-                    sep = " " if i < len(words) - 1 else ""
-                    yield {"event": "token", "data": {"agent": "debater_a", "text": word + sep}}
-                    await asyncio.sleep(0.04)
+                current_transcript.append(turn)
+                # Real streaming via _FieldExtractor fires during on_chat_model_stream.
+                # If it didn't capture anything (structured output didn't stream), fall
+                # back to word-by-word so the UI always shows a typing effect.
+                if not extractors["debater_a"]._done:
+                    words = turn["content"].split()
+                    for i, word in enumerate(words):
+                        sep = " " if i < len(words) - 1 else ""
+                        yield {"event": "token", "data": {"agent": "debater_a", "text": word + sep}}
+                        await asyncio.sleep(0.06)
                 yield {
                     "event": "turn_complete",
                     "data": {
@@ -109,19 +223,27 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                         "title": turn.get("title", ""),
                         "disputes": turn["disputes"],
                         "confidence": turn["confidence"],
+                        "turn_input_tokens": turn_in,
+                        "turn_output_tokens": turn_out,
+                        "elapsed_ms": elapsed_ms,
                         **_running_stats(),
                     },
                 }
 
             elif name == "debater_b" and output.get("transcript"):
-                tok["debater_b"]["in"] += output.get("total_input_tokens", 0)
-                tok["debater_b"]["out"] += output.get("total_output_tokens", 0)
+                elapsed_ms = int((time.monotonic() - node_start_times.get("debater_b", 0)) * 1000)
+                turn_in = output.get("total_input_tokens", 0)
+                turn_out = output.get("total_output_tokens", 0)
+                tok["debater_b"]["in"] += turn_in
+                tok["debater_b"]["out"] += turn_out
                 turn = output["transcript"][-1]
-                words = turn["content"].split()
-                for i, word in enumerate(words):
-                    sep = " " if i < len(words) - 1 else ""
-                    yield {"event": "token", "data": {"agent": "debater_b", "text": word + sep}}
-                    await asyncio.sleep(0.04)
+                current_transcript.append(turn)
+                if not extractors["debater_b"]._done:
+                    words = turn["content"].split()
+                    for i, word in enumerate(words):
+                        sep = " " if i < len(words) - 1 else ""
+                        yield {"event": "token", "data": {"agent": "debater_b", "text": word + sep}}
+                        await asyncio.sleep(0.06)
                 yield {
                     "event": "turn_complete",
                     "data": {
@@ -129,6 +251,9 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                         "title": turn.get("title", ""),
                         "disputes": turn["disputes"],
                         "confidence": turn["confidence"],
+                        "turn_input_tokens": turn_in,
+                        "turn_output_tokens": turn_out,
+                        "elapsed_ms": elapsed_ms,
                         **_running_stats(),
                     },
                 }
@@ -145,14 +270,16 @@ async def run_debate_stream(req: DebateRequest) -> AsyncGenerator[dict, None]:
                 tok["judge"]["in"] += output.get("total_input_tokens", 0)
                 tok["judge"]["out"] += output.get("total_output_tokens", 0)
                 verdict = output["verdict"]
-                tldr = verdict.get("tldr") or {}
-                stream_text = tldr.get("recommendation", "")
-                if tldr.get("why"):
-                    stream_text = stream_text.rstrip(" .") + ". " + tldr["why"]
-                words = stream_text.split()
-                for i, word in enumerate(words):
-                    sep = " " if i < len(words) - 1 else ""
-                    yield {"event": "token", "data": {"agent": "judge", "text": word + sep}}
-                    await asyncio.sleep(0.04)
+                # Stream tldr text word-by-word if real streaming didn't fire
+                if not extractors["judge"]._done:
+                    tldr = verdict.get("tldr") or {}
+                    stream_text = tldr.get("recommendation", "")
+                    if tldr.get("why"):
+                        stream_text = stream_text.rstrip(" .") + ". " + tldr["why"]
+                    words = stream_text.split()
+                    for i, word in enumerate(words):
+                        sep = " " if i < len(words) - 1 else ""
+                        yield {"event": "token", "data": {"agent": "judge", "text": word + sep}}
+                        await asyncio.sleep(0.06)
                 yield {"event": "verdict", "data": verdict}
-                yield {"event": "done", "data": _running_stats()}
+                yield {"event": "done", "data": {**_running_stats(), "transcript": current_transcript}}

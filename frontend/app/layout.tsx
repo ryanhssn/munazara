@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { Newsreader, Fraunces, Source_Serif_4, IBM_Plex_Mono, IBM_Plex_Sans, Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
@@ -26,12 +33,6 @@ const sourceSerif = Source_Serif_4({
   display: "swap",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-});
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",

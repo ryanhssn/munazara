@@ -1,10 +1,31 @@
+import asyncio
 import json
+from typing import Callable, Awaitable, TypeVar
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from app.schemas import DebateState, DebaterOutput
 from app.models import get_model_for_vendor
 from app.providers import anthropic as anthropic_provider
 from app.providers import google as google_provider
 from app.providers import openai as openai_provider
+
+_T = TypeVar("_T")
+
+_RETRYABLE_KEYWORDS = ("rate limit", "timeout", "connection", "overloaded", "service unavailable", "internal server", "529", "503", "502")
+
+
+def _is_retryable(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(k in msg for k in _RETRYABLE_KEYWORDS)
+
+
+async def _with_retry(fn: Callable[[], Awaitable[_T]], max_attempts: int = 3) -> _T:
+    for attempt in range(max_attempts):
+        try:
+            return await fn()
+        except Exception as exc:
+            if attempt == max_attempts - 1 or not _is_retryable(exc):
+                raise
+            await asyncio.sleep(2 ** attempt)
 
 _PROVIDERS = {
     "anthropic": anthropic_provider,
@@ -46,6 +67,23 @@ def _build_prompt(state: DebateState, agent: str) -> str:
     return "\n".join(lines)
 
 
+async def _invoke_structured(structured, messages):
+    """Invoke structured model with one parse-repair retry."""
+    result = await structured.ainvoke(messages)
+    if result["parsed"] is None:
+        raw_msg = result["raw"]
+        raw_text = raw_msg.content if raw_msg else ""
+        tool_results = [
+            ToolMessage(content="parse_error", tool_call_id=tc["id"])
+            for tc in (getattr(raw_msg, "tool_calls", None) or [])
+        ]
+        repair_messages = messages + [raw_msg] + tool_results + [
+            HumanMessage(content=f"Your response failed to parse. Return valid JSON matching the required schema. Raw output was:\n{raw_text}"),
+        ]
+        result = await structured.ainvoke(repair_messages)
+    return result
+
+
 async def _run_debater(state: DebateState, agent: str) -> dict:
     tier = state["tier"]
     vendor = state["debater_a_vendor"] if agent == "debater_a" else state["debater_b_vendor"]
@@ -57,19 +95,9 @@ async def _run_debater(state: DebateState, agent: str) -> dict:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=_build_prompt(state, agent)),
     ]
-    result = await structured.ainvoke(messages)
-    if result["parsed"] is None:
-        # one repair retry
-        raw_msg = result["raw"]
-        raw_text = raw_msg.content if raw_msg else ""
-        tool_results = [
-            ToolMessage(content="parse_error", tool_call_id=tc["id"])
-            for tc in (getattr(raw_msg, "tool_calls", None) or [])
-        ]
-        repair_messages = messages + [raw_msg] + tool_results + [
-            HumanMessage(content=f"Your response failed to parse. Return valid JSON matching the required schema. Raw output was:\n{raw_text}"),
-        ]
-        result = await structured.ainvoke(repair_messages)
+
+    result = await _with_retry(lambda: _invoke_structured(structured, messages))
+
     if result["parsed"] is None:
         raise ValueError(f"{agent} structured output parse failed: {result.get('parsing_error')}")
     response: DebaterOutput = result["parsed"]
@@ -85,10 +113,12 @@ async def _run_debater(state: DebateState, agent: str) -> dict:
         "confidence": response.confidence,
     }
     disputes_key = "last_a_disputes" if agent == "debater_a" else "last_b_disputes"
+    confidence_key = "last_a_confidence" if agent == "debater_a" else "last_b_confidence"
 
     return {
         "transcript": [turn],
         disputes_key: [d.model_dump() for d in response.disputes],
+        confidence_key: response.confidence,
         "total_input_tokens": usage.get("input_tokens", 0),
         "total_output_tokens": usage.get("output_tokens", 0),
     }

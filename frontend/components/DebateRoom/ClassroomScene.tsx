@@ -13,6 +13,9 @@ interface Props {
   debaterB: DebaterConfig;
   judge: JudgeConfig;
   onTakeaway?: () => void;
+  debaterACardRef?: React.RefObject<HTMLDivElement | null>;
+  debaterBCardRef?: React.RefObject<HTMLDivElement | null>;
+  hiddenSpeaker?: "debater_a" | "debater_b";
 }
 
 function CharacterSprite({
@@ -104,7 +107,7 @@ function stageStyle(
   return { ...base, transform: "scale(0.84) translateY(1%)", opacity: 0.52, filter: "brightness(0.82) saturate(0.6)" };
 }
 
-export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway }: Props) {
+export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, debaterACardRef, debaterBCardRef, hiddenSpeaker }: Props) {
   const activeSpeaker: "a" | "b" | "judge" | null =
     debaterA.expression === "speaking" ? "a" :
     debaterB.expression === "speaking" ? "b" :
@@ -161,7 +164,14 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway }
         }}
       >
         {ACTIVE_EXPRESSIONS.has(debaterA.expression) ? (
-          <div style={{ width: "100%" }}>
+          <div
+            ref={debaterACardRef}
+            style={{
+              width: "100%",
+              opacity: hiddenSpeaker === "debater_a" ? 0 : 1,
+              transition: "opacity 0.22s ease",
+            }}
+          >
             <DebaterCard debater={debaterA} isActive={activeSpeaker === "a"} />
           </div>
         ) : debaterA.expression === "thinking" ? (
@@ -312,7 +322,7 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway }
       <div
         style={{
           position: "absolute",
-          right: "1%",
+          right: "10%",
           bottom: "2%",
           width: "21%",
           display: "flex",
@@ -323,7 +333,14 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway }
         }}
       >
         {ACTIVE_EXPRESSIONS.has(debaterB.expression) ? (
-          <div style={{ width: "100%" }}>
+          <div
+            ref={debaterBCardRef}
+            style={{
+              width: "100%",
+              opacity: hiddenSpeaker === "debater_b" ? 0 : 1,
+              transition: "opacity 0.22s ease",
+            }}
+          >
             <DebaterCard debater={debaterB} isActive={activeSpeaker === "b"} />
           </div>
         ) : debaterB.expression === "thinking" ? (

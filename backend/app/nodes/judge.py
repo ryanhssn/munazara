@@ -2,6 +2,7 @@ import json
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from app.schemas import DebateState, Verdict
 from app.models import get_judge_model
+from app.nodes.debater import _with_retry
 from app.providers import anthropic as anthropic_provider
 from app.providers import google as google_provider
 from app.providers import openai as openai_provider
@@ -79,18 +80,23 @@ async def judge_node(state: DebateState) -> dict:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=_build_prompt(state)),
     ]
-    result = await structured.ainvoke(messages)
-    if result["parsed"] is None:
-        raw_msg = result["raw"]
-        raw_text = raw_msg.content if raw_msg else ""
-        tool_results = [
-            ToolMessage(content="parse_error", tool_call_id=tc["id"])
-            for tc in (getattr(raw_msg, "tool_calls", None) or [])
-        ]
-        repair_messages = messages + [raw_msg] + tool_results + [
-            HumanMessage(content=f"Your response failed to parse. Return valid JSON matching the required schema. Raw output was:\n{raw_text}"),
-        ]
-        result = await structured.ainvoke(repair_messages)
+
+    async def _invoke():
+        result = await structured.ainvoke(messages)
+        if result["parsed"] is None:
+            raw_msg = result["raw"]
+            raw_text = raw_msg.content if raw_msg else ""
+            tool_results = [
+                ToolMessage(content="parse_error", tool_call_id=tc["id"])
+                for tc in (getattr(raw_msg, "tool_calls", None) or [])
+            ]
+            repair_messages = messages + [raw_msg] + tool_results + [
+                HumanMessage(content=f"Your response failed to parse. Return valid JSON matching the required schema. Raw output was:\n{raw_text}"),
+            ]
+            result = await structured.ainvoke(repair_messages)
+        return result
+
+    result = await _with_retry(_invoke)
     if result["parsed"] is None:
         raise ValueError(f"Judge structured output parse failed: {result.get('parsing_error')}")
     verdict: Verdict = result["parsed"]
