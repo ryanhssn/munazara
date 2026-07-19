@@ -56,8 +56,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[_cors_origin],
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 
@@ -98,7 +98,7 @@ async def debate(req: DebateRequest):
             logger.info("debate_done", extra={"thread_id": thread_id})
         except Exception as e:
             logger.exception("debate_error", extra={"thread_id": thread_id, "error": str(e)})
-            yield {"event": "error", "data": json.dumps({"message": str(e)})}
+            yield {"event": "error", "data": json.dumps({"message": "Debate failed. Check server logs."})}
 
     return EventSourceResponse(generator())
 
@@ -112,7 +112,7 @@ async def get_debate(thread_id: str):
         state = await _checkpointed_graph.aget_state({"configurable": {"thread_id": thread_id}})
     except Exception as exc:
         logger.exception("get_debate_error", extra={"thread_id": thread_id})
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="Internal server error")
     if state is None or not state.values:
         raise HTTPException(status_code=404, detail="Debate not found")
     values = state.values

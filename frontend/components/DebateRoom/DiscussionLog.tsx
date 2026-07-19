@@ -136,7 +136,7 @@ function TurnCard({ entry, isNewest }: { entry: Extract<LogEntry, { type: "turn"
         </div>
         {entry.tokens && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 5, borderTop: "1px dotted var(--glass-border)", fontFamily: "var(--font-mono)", fontSize: 7.5, fontWeight: 600, letterSpacing: "0.1em", color: "var(--ink-soft)" }}>
-            <span>{entry.tokens.input.toLocaleString()} in · {entry.tokens.output.toLocaleString()} out</span>
+            <span>{(entry.tokens.input + entry.tokens.output).toLocaleString()} tokens</span>
             {entry.elapsedMs !== undefined && <span>{(entry.elapsedMs / 1000).toFixed(1)}s</span>}
           </div>
         )}
