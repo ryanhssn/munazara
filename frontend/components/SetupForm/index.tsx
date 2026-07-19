@@ -190,7 +190,7 @@ export default function SetupForm({ onStart, historySection }: Props) {
       <div style={{ maxWidth: 940, margin: "0 auto", padding: "clamp(30px, 5vw, 64px) 20px 80px", position: "relative", zIndex: 1 }}>
 
         {/* Wordmark */}
-        <div className="mz-stagger-1" style={{ position: "relative", textAlign: "center", paddingTop: 10 }}>
+        <div className="mz-stagger-1" style={{ position: "relative", textAlign: "center", paddingTop: 10, zIndex: showWordmarkInfo ? 80 : "auto" }}>
           <div style={{ position: "relative", display: "inline-block" }}>
             <div style={{ fontFamily: "var(--font-serif)", fontWeight: 600, fontSize: "clamp(32px, 5vw, 44px)", letterSpacing: "0.24em", textIndent: "0.24em", color: "var(--ink)" }}>MUNAZARA</div>
             <button

@@ -59,7 +59,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${newsreader.variable} ${fraunces.variable} ${sourceSerif.variable} ${ibmPlexMono.variable} ${ibmPlexSans.variable} ${notoNaskhArabic.variable}`}
     >
-      <body style={{ margin: 0, padding: 0, height: "100%", display: "flex", flexDirection: "column" }}>{children}</body>
+      <body style={{ margin: 0, padding: 0, height: "100%", display: "flex", flexDirection: "column" }}>
+        {children}
+        <a
+          href="https://bilal.one"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: "fixed",
+            bottom: 12,
+            left: 14,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            fontFamily: "var(--font-mono)",
+            fontSize: 8.5,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--muted)",
+            textDecoration: "none",
+            opacity: 0.65,
+            transition: "opacity 0.2s ease",
+            pointerEvents: "auto",
+          }}
+        >
+          <span>Built by</span>
+          <span style={{ color: "var(--accent)", fontWeight: 600 }}>bilal.one</span>
+        </a>
+      </body>
     </html>
   );
 }

@@ -153,6 +153,7 @@ function reducer(s: StreamState, a: Action): StreamState {
         content: speech,
         tokens: a.turnInputTokens || a.turnOutputTokens ? { input: a.turnInputTokens, output: a.turnOutputTokens } : undefined,
         elapsedMs: a.elapsedMs || undefined,
+        confidence: a.confidence,
       };
       if (isA)
         return { ...s, debaterAConfidence: a.confidence, debaterAExpression: a.disputes.length > 0 ? "disagreeing" : "agreeing", debaterBExpression: "thinking", log: [...s.log, entry], totalTokens: s.tokenOffset + a.totalTokens, estimatedCostUsd: s.costOffset + a.estimatedCostUsd };

@@ -134,10 +134,19 @@ function TurnCard({ entry, isNewest }: { entry: Extract<LogEntry, { type: "turn"
         >
           {renderText(entry.content)}
         </div>
-        {entry.tokens && (
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 5, borderTop: "1px dotted var(--glass-border)", fontFamily: "var(--font-mono)", fontSize: 7.5, fontWeight: 600, letterSpacing: "0.1em", color: "var(--ink-soft)" }}>
-            <span>{(entry.tokens.input + entry.tokens.output).toLocaleString()} tokens</span>
-            {entry.elapsedMs !== undefined && <span>{(entry.elapsedMs / 1000).toFixed(1)}s</span>}
+        {(entry.tokens || entry.confidence !== undefined) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, paddingTop: 5, borderTop: "1px dotted var(--glass-border)", fontFamily: "var(--font-mono)", fontSize: 7.5, fontWeight: 600, letterSpacing: "0.1em", color: "var(--ink-soft)" }}>
+            {entry.tokens && <span style={{ flexShrink: 0 }}>{(entry.tokens.input + entry.tokens.output).toLocaleString()} tokens</span>}
+            {entry.confidence !== undefined && (
+              <>
+                <span style={{ flexShrink: 0, fontSize: 6.5, letterSpacing: "0.12em", color: "var(--muted)" }}>CONF</span>
+                <span style={{ display: "block", flex: "1 1 0", height: 3, background: "rgba(0,0,0,0.1)" }}>
+                  <span style={{ display: "block", height: 3, background: color, width: `${Math.round(entry.confidence * 100)}%`, transformOrigin: "left", animation: "mzConfBar 0.9s cubic-bezier(0.22,1,0.36,1) both" }} />
+                </span>
+                <span style={{ flexShrink: 0, color }}>{Math.round(entry.confidence * 100)}%</span>
+              </>
+            )}
+            {entry.elapsedMs !== undefined && <span style={{ flexShrink: 0 }}>{(entry.elapsedMs / 1000).toFixed(1)}s</span>}
           </div>
         )}
       </div>
