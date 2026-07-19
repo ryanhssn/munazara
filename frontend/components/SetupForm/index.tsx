@@ -286,7 +286,7 @@ export default function SetupForm({ onStart, historySection }: Props) {
         <form onSubmit={handleSubmit}>
 
           {/* Debater cards */}
-          <div className="mz-stagger-4" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start", gap: 18 }}>
+          <div className="mz-stagger-4" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start", gap: 18, position: "relative", zIndex: dropA.open || dropB.open ? 50 : "auto" }}>
             <DebaterCardWithDropdown
               label="DEBATER A"
               accentColor="var(--accent-blue)"
@@ -313,8 +313,8 @@ export default function SetupForm({ onStart, historySection }: Props) {
           </div>
 
           {/* Judge — The Desk */}
-          <div className="mz-stagger-5" style={{ display: "flex", justifyContent: "center", marginTop: 26 }}>
-            <div style={{ position: "relative", flex: "0 1 320px", minWidth: 260, zIndex: dropJ.open ? 40 : "auto" }}>
+          <div className="mz-stagger-5" style={{ display: "flex", justifyContent: "center", marginTop: 26, position: "relative", zIndex: dropJ.open ? 50 : "auto" }}>
+            <div style={{ position: "relative", flex: "0 1 320px", minWidth: 260, zIndex: dropJ.open ? 50 : "auto" }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 8, marginBottom: 9 }}>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "0.25em", color: "var(--accent)" }}>THE DESK</span>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.12em", color: "var(--muted)", border: "1px solid var(--glass-border-accent)", padding: "1px 6px", borderRadius: "var(--radius-pill)" }}>RECOMMENDED · NOT DEBATING</span>

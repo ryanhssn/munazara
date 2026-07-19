@@ -37,7 +37,9 @@ class _JsonFormatter(logging.Formatter):
         for key, val in record.__dict__.items():
             if key not in logging.LogRecord.__dict__ and not key.startswith("_"):
                 payload[key] = val
-        return json.dumps(payload)
+        # default=str: extra fields can carry non-JSON values (e.g. type objects
+        # leaking from langchain internals) — stringify rather than crash the log.
+        return json.dumps(payload, default=str)
 
 
 def setup_logging(level: str = "INFO") -> None:

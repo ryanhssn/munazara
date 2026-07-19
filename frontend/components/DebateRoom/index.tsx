@@ -8,6 +8,10 @@ import VerdictOverlay from "./VerdictOverlay";
 import DiscussionLog from "./DiscussionLog";
 import FlyingCard from "./FlyingCard";
 
+// Right log panel width — shared with ClassroomScene so the character stage
+// reserves this space and never renders debaters underneath the panel.
+const PANEL_WIDTH = "clamp(300px, 26vw, 380px)";
+
 interface FlyState {
   agent: "debater_a" | "debater_b";
   vendor: Vendor;
@@ -124,6 +128,7 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
             debaterACardRef={debaterACardRef}
             debaterBCardRef={debaterBCardRef}
             hiddenSpeaker={flyState?.agent}
+            rightInset={PANEL_WIDTH}
           />
         </div>
 
@@ -165,7 +170,7 @@ export default function DebateRoom({ question, debaterA, debaterB, judge, verdic
           right: 0,
           top: 0,
           bottom: 0,
-          width: "clamp(300px, 26vw, 380px)",
+          width: PANEL_WIDTH,
           display: "flex",
           flexDirection: "column",
           borderLeft: "1px solid rgba(255,255,255,0.4)",

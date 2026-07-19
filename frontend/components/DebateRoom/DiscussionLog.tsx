@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import type { LogEntry, ExhibitRow, Vendor } from "./types";
+import type { LogEntry, ExhibitRow, Vendor, EvidenceSource } from "./types";
 import VendorIcon, { VENDOR_COLOR } from "./VendorIcon";
 
 function renderText(text: string): React.ReactNode {
@@ -136,10 +136,63 @@ function TurnCard({ entry, isNewest }: { entry: Extract<LogEntry, { type: "turn"
         </div>
         {entry.tokens && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingTop: 5, borderTop: "1px dotted var(--glass-border)", fontFamily: "var(--font-mono)", fontSize: 7.5, fontWeight: 600, letterSpacing: "0.1em", color: "var(--ink-soft)" }}>
-            <span>{entry.tokens.input.toLocaleString()} in · {entry.tokens.output.toLocaleString()} out</span>
+            <span>{(entry.tokens.input + entry.tokens.output).toLocaleString()} tokens</span>
             {entry.elapsedMs !== undefined && <span>{(entry.elapsedMs / 1000).toFixed(1)}s</span>}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceCard({ entry }: { entry: Extract<LogEntry, { type: "evidence" }> }) {
+  const isA = entry.agent === "debater_a";
+  const color = ROLE_COLOR[entry.agent];
+
+  function domainOf(url: string): string {
+    try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent: isA ? "flex-start" : "flex-end" }}>
+      <div style={{
+        width: "86%",
+        background: "rgba(240, 245, 255, 0.45)",
+        backdropFilter: "blur(16px) saturate(140%)",
+        border: `1px solid rgba(255,255,255,0.6)`,
+        borderLeft: `2px solid ${color}`,
+        borderRadius: "var(--radius-lg)",
+        padding: "9px 12px",
+        animation: "mzRise 0.4s ease both",
+        boxSizing: "border-box",
+        boxShadow: "var(--shadow-2)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, fontWeight: 600, letterSpacing: "0.2em", color }}>SOURCES CONSULTED</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 7, color: "var(--muted-2)" }}>· ROUND {toRoman(entry.round)}</span>
+        </div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, color: "var(--muted)", marginBottom: 7, fontStyle: "italic" }}>
+          "{entry.query}"
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {(entry.sources as EvidenceSource[]).map((src, i) => (
+            <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                padding: "4px 7px",
+                background: "rgba(255,255,255,0.5)",
+                borderRadius: 4,
+                border: "1px solid rgba(255,255,255,0.7)",
+              }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 7, color: "var(--muted-3)", flexShrink: 0 }}>[{i + 1}]</span>
+                <span style={{ fontFamily: "var(--font-serif)", fontSize: 11, color: "var(--ink-soft)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{src.title}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 7, color, flexShrink: 0 }}>{domainOf(src.url)}</span>
+              </div>
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -231,6 +284,7 @@ export default function DiscussionLog({ log, vertical, flyLogIndex }: Props) {
         if (entry.type === "agreement") return <AgreementCard key={i} entry={entry} />;
         if (entry.type === "dispute")   return <DisputeCard   key={i} entry={entry} />;
         if (entry.type === "challenge") return <ChallengeCard key={i} entry={entry} />;
+        if (entry.type === "evidence")  return <EvidenceCard  key={i} entry={entry} />;
       })}
       <div ref={endRef} style={{ flexShrink: 0, width: vertical ? undefined : 1, height: vertical ? 1 : undefined }} />
     </div>

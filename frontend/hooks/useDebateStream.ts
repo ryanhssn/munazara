@@ -2,7 +2,7 @@
 
 import { useReducer, useCallback, useRef } from "react";
 import type { ExpressionState } from "@/lib/sceneAssets";
-import type { VerdictData, Vendor, LogEntry } from "@/components/DebateRoom/types";
+import type { VerdictData, Vendor, LogEntry, EvidenceSource } from "@/components/DebateRoom/types";
 import { getRoundName, JUDGE_DISPLAY } from "@/lib/models";
 import { API_URL } from "@/lib/config";
 
@@ -54,6 +54,7 @@ type Action =
   | { type: "CONVERGENCE"; converged: boolean }
   | { type: "JUDGE_START" }
   | { type: "VERDICT"; verdict: VerdictData }
+  | { type: "EVIDENCE_FETCHED"; agent: "debater_a" | "debater_b"; round: number; query: string; sources: EvidenceSource[] }
   | { type: "ERROR"; message: string }
   | { type: "DONE" };
 
@@ -189,6 +190,11 @@ function reducer(s: StreamState, a: Action): StreamState {
         judgeStatus: "Verdict delivered",
       };
 
+    case "EVIDENCE_FETCHED": {
+      const entry: LogEntry = { type: "evidence", agent: a.agent, round: a.round, query: a.query, sources: a.sources };
+      return { ...s, log: [...s.log, entry] };
+    }
+
     case "ERROR":
       return { ...s, phase: "error", error: a.message };
 
@@ -297,6 +303,9 @@ export function useDebateStream() {
               break;
             case "convergence":
               dispatch({ type: "CONVERGENCE", converged: data.converged as boolean });
+              break;
+            case "evidence_fetched":
+              dispatch({ type: "EVIDENCE_FETCHED", agent: data.agent as "debater_a" | "debater_b", round: data.round as number, query: data.query as string, sources: data.sources as EvidenceSource[] });
               break;
             case "judge_start":
               dispatch({ type: "JUDGE_START" });
@@ -416,6 +425,9 @@ export function useDebateStream() {
               break;
             case "convergence":
               dispatch({ type: "CONVERGENCE", converged: data.converged as boolean });
+              break;
+            case "evidence_fetched":
+              dispatch({ type: "EVIDENCE_FETCHED", agent: data.agent as "debater_a" | "debater_b", round: data.round as number, query: data.query as string, sources: data.sources as EvidenceSource[] });
               break;
             case "judge_start":
               dispatch({ type: "JUDGE_START" });

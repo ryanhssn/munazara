@@ -16,6 +16,9 @@ interface Props {
   debaterACardRef?: React.RefObject<HTMLDivElement | null>;
   debaterBCardRef?: React.RefObject<HTMLDivElement | null>;
   hiddenSpeaker?: "debater_a" | "debater_b";
+  /* CSS length reserved on the right for the overlaying log panel, so the
+   * character stage centers in the visible area instead of under the panel. */
+  rightInset?: string;
 }
 
 function CharacterSprite({
@@ -107,7 +110,7 @@ function stageStyle(
   return { ...base, transform: "scale(0.84) translateY(1%)", opacity: 0.52, filter: "brightness(0.82) saturate(0.6)" };
 }
 
-export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, debaterACardRef, debaterBCardRef, hiddenSpeaker }: Props) {
+export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, debaterACardRef, debaterBCardRef, hiddenSpeaker, rightInset = "0px" }: Props) {
   const activeSpeaker: "a" | "b" | "judge" | null =
     debaterA.expression === "speaking" ? "a" :
     debaterB.expression === "speaking" ? "b" :
@@ -134,16 +137,20 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, 
       </div>
 
       {/*
-       * ── Character stage: capped at 1750px, centered ──
-       * Characters use % positions relative to this inner box,
-       * so they don't drift when the outer container grows wider.
+       * ── Character stage: capped at 1750px, centered in the VISIBLE area ──
+       * `right: rightInset` reserves the log panel's width so the stage centers
+       * in the space left of the panel — debaters never render underneath it.
+       * Characters use % positions relative to this inner box, so they don't
+       * drift when the outer container grows wider.
        */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
+          left: 0,
+          right: rightInset,
+          top: 0,
+          bottom: 0,
           maxWidth: 1750,
-          width: "100%",
           margin: "0 auto",
           zIndex: 1,
         }}
@@ -153,7 +160,7 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, 
       <div
         style={{
           position: "absolute",
-          left: "1%",
+          left: "8%",
           bottom: "2%",
           width: "21%",
           display: "flex",
@@ -234,11 +241,13 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, 
         </div>
       </div>
 
-      {/* ── Teacher station: outer div handles centering only; inner div handles scale ── */}
+      {/* ── Teacher station: outer div handles centering only; inner div handles scale ──
+          left is nudged right by half the reserved panel width so she lands on the
+          room's true center (the stage box is offset left by that panel reserve). */}
       <div
         style={{
           position: "absolute",
-          left: "50%",
+          left: `calc(50% + (${rightInset} / 3.5))`,
           bottom: "24%",
           width: "22%",
           transform: "translateX(-50%)",
@@ -318,11 +327,13 @@ export default function ClassroomScene({ debaterA, debaterB, judge, onTakeaway, 
         </div>
       </div>
 
-      {/* ── Debater B station: card → 12px gap → character → desk ── */}
+      {/* ── Debater B station: card → 12px gap → character → desk ──
+          right:8% mirrors Debater A's left:8% — pulled in toward the teacher.
+          The stage box already reserves the panel width. */}
       <div
         style={{
           position: "absolute",
-          right: "10%",
+          right: "2%",
           bottom: "2%",
           width: "21%",
           display: "flex",

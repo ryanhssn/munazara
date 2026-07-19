@@ -236,6 +236,8 @@ async def run_debate_stream(
                 tok["debater_a"]["out"] += turn_out
                 turn = output["transcript"][-1]
                 current_transcript.append(turn)
+                if output.get("evidence"):
+                    yield {"event": "evidence_fetched", "data": {"agent": "debater_a", "round": current_round, "query": output.get("evidence_query", ""), "sources": output["evidence"]}}
                 # Real streaming via _FieldExtractor fires during on_chat_model_stream.
                 # If it didn't capture anything (structured output didn't stream), fall
                 # back to word-by-word so the UI always shows a typing effect.
@@ -267,6 +269,8 @@ async def run_debate_stream(
                 tok["debater_b"]["out"] += turn_out
                 turn = output["transcript"][-1]
                 current_transcript.append(turn)
+                if output.get("evidence"):
+                    yield {"event": "evidence_fetched", "data": {"agent": "debater_b", "round": current_round, "query": output.get("evidence_query", ""), "sources": output["evidence"]}}
                 if not extractors["debater_b"]._done:
                     words = turn["content"].split()
                     for i, word in enumerate(words):

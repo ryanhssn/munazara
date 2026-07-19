@@ -58,12 +58,19 @@ export interface ExhibitRow {
   value: string;
 }
 
+export interface EvidenceSource {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
 export type LogEntry =
   | { type: "exhibit"; meta: string; title: string; rows: ExhibitRow[]; total_label: string; total_value: string }
   | { type: "turn"; role: "debater_a" | "debater_b"; round: number; roundName: string; vendor: string; model: string; title: string; content: string; tokens?: { input: number; output: number }; elapsedMs?: number }
   | { type: "agreement"; after: string; title: string; content: string }
   | { type: "dispute"; after: string; title: string; positions: Array<{ vendor: string; model: string; text: string }> }
-  | { type: "challenge"; text: string };
+  | { type: "challenge"; text: string }
+  | { type: "evidence"; agent: "debater_a" | "debater_b"; round: number; query: string; sources: EvidenceSource[] };
 
 export type DebateStatus = "verdict_pending" | "accepted" | "challenged" | "expired";
 
