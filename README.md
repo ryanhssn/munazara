@@ -6,7 +6,7 @@ Two AI models from different vendors argue opposing sides of your question acros
 
 Bring your own API keys, run it yourself.
 
-![Munazara — a live debate streaming to a structured verdict](frontend/public/assets/working-exmaple.gif)
+![Munazara — a live debate streaming to a structured verdict](frontend/public/assets/working-example.gif)
 
 ---
 
